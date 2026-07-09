@@ -227,6 +227,16 @@ function calculateDeliveryDistance(){
  applyDeliveryByRegion(true);
 }
 
+
+function orderItemsText(items){
+ return items.map(i=>{
+  if(i.flavors){
+   return `🎁 ${i.qty}x ${i.name} - ${BRL(i.price*i.qty)}\nSabores: ${i.flavors.map(f=>f.name).join(', ')}`;
+  }
+  return `${i.emoji||'🍫'} ${i.qty}x ${i.name} - ${BRL(i.price*i.qty)}`;
+ }).join('\n');
+}
+
 function finish(){
  if(!cart.length)return alert('Carrinho vazio.');
  const f=$('[name=fulfillment]:checked').value, pay=$('#payment').value;
