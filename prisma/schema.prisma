@@ -1,0 +1,94 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum ProductStatus { AVAILABLE UNAVAILABLE }
+enum OrderStatus { PENDING READY OUT_FOR_DELIVERY DELIVERED CANCELED }
+enum StockMovementType { ENTRY SALE RESERVATION_CANCEL ADJUSTMENT }
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  category    String
+  priceCents  Int
+  status      ProductStatus @default(AVAILABLE)
+  imageUrl    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  stocks      Stock[]
+  promotionItems PromotionItem[]
+}
+
+model Promotion {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  priceCents  Int
+  active      Boolean @default(true)
+  description String?
+  items       PromotionItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PromotionItem {
+  id          String @id @default(cuid())
+  promotionId String
+  productId   String
+  quantity    Int
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
+}
+
+model Stock {
+  id           String @id @default(cuid())
+  productId    String @unique
+  quantity     Int    @default(0)
+  minAlert      Int    @default(5)
+  product      Product @relation(fields: [productId], references: [id])
+  movements    StockMovement[]
+  updatedAt    DateTime @updatedAt
+}
+
+model StockMovement {
+  id          String @id @default(cuid())
+  stockId     String
+  productId   String
+  type        StockMovementType
+  quantity    Int
+  beforeQty   Int
+  afterQty    Int
+  reason      String
+  orderId     String?
+  createdAt   DateTime @default(now())
+  stock       Stock @relation(fields: [stockId], references: [id])
+}
+
+model Order {
+  id            String @id @default(cuid())
+  customerName  String
+  customerPhone String
+  deliveryType  String
+  address       String?
+  subtotalCents Int
+  freightCents  Int @default(0)
+  totalCents    Int
+  status        OrderStatus @default(PENDING)
+  whatsappText  String?
+  items         OrderItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  kind        String
+  productId   String?
+  promotionId String?
+  name        String
+  quantity    Int
+  unitCents   Int
+  meta        Json?
+  order       Order @relation(fields: [orderId], references: [id])
+}

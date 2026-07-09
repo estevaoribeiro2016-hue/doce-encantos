@@ -1,20 +1,26 @@
-# Doce Encanto V39 — Frete grátis acima de R$30
+# Doce Encanto v43
 
-Nova versão baseada na V38, mantendo o frete por região e removendo a regra antiga de entrega somente acima de R$30.
+Versão completa com:
+- Finalizar pedido criando pedido pendente.
+- Botões + e - no resumo funcionando.
+- Promoção 3 trufas por R$ 14,00.
+- Trufas Brigadeiro, Oreo, Maracujá e Coco disponíveis.
+- Morango e Uva aparecem, mas ficam indisponíveis se status/estoque bloquear.
+- Estoque inteligente por sabor.
+- Desconto automático de estoque ao finalizar pedido.
+- Bloqueio de pedido quando não há estoque suficiente.
+- Devolução do estoque quando o pedido é cancelado.
+- Histórico de pedidos entregues/cancelados.
+- Histórico de movimentação de estoque.
+- Link automático para WhatsApp com mensagem pronta.
 
-## Frete por região
+## Rodar
+1. Copie `.env.example` para `.env` e ajuste o DATABASE_URL.
+2. npm install
+3. npx prisma migrate dev --name init
+4. npm run seed
+5. npm run dev
 
-- Pindorama e Filadélfia: R$5,00
-- Glória e Coqueiros: R$6,00
-- Demais bairros: R$10,00
-
-## Nova regra
-
-- Entrega via Uber Moto disponível normalmente.
-- Frete grátis para pedidos acima de R$30,00.
-- Checkout mostra quando falta para ganhar frete grátis.
-- WhatsApp informa quando o frete saiu grátis.
-
-## Atualização
-
-Extraia o ZIP, entre na pasta e envie todos os arquivos de dentro para a raiz do GitHub.
+Abra:
+- http://localhost:3000/cardapio
+- http://localhost:3000/admin

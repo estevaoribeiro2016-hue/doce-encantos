@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function Home(){return <main className="max-w-5xl mx-auto p-6"><h1 className="text-4xl font-black mb-3">Doce Encanto v43</h1><p className="mb-6">Versão com carrinho, +/-, finalização, pedidos pendentes, histórico e estoque inteligente.</p><div className="flex gap-3"><Link className="btn" href="/cardapio">Abrir cardápio</Link><Link className="btn" href="/admin">Painel admin</Link></div></main>}
