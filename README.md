@@ -1,28 +1,13 @@
-# Doce Encanto V23 Estável
+# Doce Encanto v24 — Trufita AI
 
-Primeira versão estável do sistema Doce Encanto.
+Versão focada na Trufita AI como vendedora virtual.
 
-## Inclui
-- Site do cliente
-- Mascote oficial animada
-- Carrinho corrigido
-- Animação da trufa indo até o carrinho
-- Promoção 3 por R$14 com sabores repetidos
-- Checkout separado
-- Retirada e entrega
-- Pix com QR Code + copia e cola
-- Envio de comprovante Pix com confirmação simulada
-- WhatsApp com mensagem profissional somente no final do pedido
-- Área do cliente
-- Central da empresa com login
-- Estoque por sabor
-- Produção, financeiro e relatórios básicos
-- Modo claro/escuro
-- PWA
+## Novidades
+- Encantina AI renomeada para **Trufita AI**.
+- Chat com campo para o cliente perguntar livremente.
+- Respostas sobre sabores, estoque, promoção, pagamento, entrega, retirada e recomendações.
+- Sugestões rápidas no chat: menos doce, sabores de hoje, orçamento de R$20 e promoção.
+- Mantém carrinho, checkout, Pix, central da empresa, estoque, PWA e modo claro/escuro da V23.
 
-## Login empresa
-- usuário: teteu.trufa / senha: 30707420
-- usuário: ingrid.trufa / senha: 30707420
-
-## Atualização na Vercel
-Suba todos os arquivos da raiz desta pasta no GitHub.
+## Como publicar
+Envie todo o conteúdo desta pasta para a raiz do repositório GitHub `doce-encantos`.

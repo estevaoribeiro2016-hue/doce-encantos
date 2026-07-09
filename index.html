@@ -30,11 +30,11 @@
         <span class="pill">Pedido por WhatsApp • Pix disponível</span>
         <h1>Seu momento doce começa aqui ✨</h1>
         <p>Escolha suas trufas, monte o carrinho e finalize com uma mensagem profissional pelo WhatsApp.</p>
-        <div class="actions"><a class="btn" href="#cardapio">Ver cardápio</a><button class="btn light" id="openAi" type="button">Encantina AI</button></div>
+        <div class="actions"><a class="btn" href="#cardapio">Ver cardápio</a><button class="btn light" id="openAi" type="button">Trufita AI</button></div>
       </div>
       <div class="mascot-card">
-        <img class="mascot alive" id="mascot" src="/assets/trufinha.png" alt="Encantina AI" />
-        <p id="mascotSpeech">Oi! Eu sou a Encantina AI 💖</p>
+        <img class="mascot alive" id="mascot" src="/assets/trufinha.png" alt="Trufita AI" />
+        <p id="mascotSpeech">Oi! Eu sou a Trufita AI 💖</p>
       </div>
     </section>
 
@@ -127,8 +127,19 @@
 
   <div class="ai-pop" id="aiPop">
     <button class="x" id="closeAi">×</button>
-    <b>Encantina AI 🍫</b>
-    <p id="aiText">Quer uma sugestão? Maracujá é equilibrada e combina muito com chocolate. Oreo é mais doce e crocante. Brigadeiro é clássica. Coco é leve e cremosa.</p>
+    <b>Trufita AI 🍫</b>
+    <p class="ai-subtitle">Sua vendedora virtual da Doce Encanto.</p>
+    <div id="aiMessages" class="ai-messages"></div>
+    <div class="ai-suggestions">
+      <button type="button" data-ai="Qual trufa não é muito doce?">Menos doce</button>
+      <button type="button" data-ai="Quais sabores tem hoje?">Sabores de hoje</button>
+      <button type="button" data-ai="Tenho R$20, o que você recomenda?">Tenho R$20</button>
+      <button type="button" data-ai="Como funciona a promoção?">Promoção</button>
+    </div>
+    <form id="aiForm" class="ai-form">
+      <input id="aiInput" placeholder="Pergunte para a Trufita..." autocomplete="off" />
+      <button type="submit">Enviar</button>
+    </form>
   </div>
 
   <a class="whats" href="https://wa.me/553192180872" target="_blank" rel="noreferrer">WhatsApp</a>
