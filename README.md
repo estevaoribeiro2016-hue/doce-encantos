@@ -1,31 +1,28 @@
-# Doce Encanto V22
+# Doce Encanto V23 Estável
 
-Versão com foco no checkout completo e correções do carrinho.
+Primeira versão estável do sistema Doce Encanto.
 
-## Novidades
+## Inclui
+- Site do cliente
+- Mascote oficial animada
+- Carrinho corrigido
+- Animação da trufa indo até o carrinho
+- Promoção 3 por R$14 com sabores repetidos
+- Checkout separado
+- Retirada e entrega
+- Pix com QR Code + copia e cola
+- Envio de comprovante Pix com confirmação simulada
+- WhatsApp com mensagem profissional somente no final do pedido
+- Área do cliente
+- Central da empresa com login
+- Estoque por sabor
+- Produção, financeiro e relatórios básicos
+- Modo claro/escuro
+- PWA
 
-- Correção do botão de adicionar trufa unitária ao carrinho.
-- Animação da trufa voando até o carrinho ao adicionar.
-- Carrinho lateral com botão de ir para pagamento.
-- Checkout separado e mais completo.
-- Escolha entre retirada e entrega.
-- Retirada mostra o endereço da loja: Rua Aletes, 78, Pindorama, 30865-180.
-- Entrega exige CEP, rua, número e bairro.
-- Entrega só permite Pix.
-- Dinheiro/cartão ficam disponíveis apenas para retirada.
-- Pix com QR Code e botão Pix copia e cola.
-- Scanner Pix simulado: cliente envia comprovante e a Trufita confirma o pagamento.
-- Modo claro e modo escuro.
-- Área da empresa com botão voltar ao início.
+## Login empresa
+- usuário: teteu.trufa / senha: 30707420
+- usuário: ingrid.trufa / senha: 30707420
 
-## Como atualizar
-
-Extraia o ZIP, selecione todos os arquivos de dentro da pasta e envie para o GitHub na raiz do repositório.
-
-
-## V22
-- Nome alterado para Trufita AI.
-- Carrinho com alvo fixo e animação da trufa indo até o carrinho corrigida.
-- Área do cliente com busca por WhatsApp corrigida.
-- Área da empresa com acesso mais claro a relatórios.
-- Botão de instalação PWA com instrução quando o navegador não permite instalação automática.
+## Atualização na Vercel
+Suba todos os arquivos da raiz desta pasta no GitHub.
