@@ -6,7 +6,7 @@ const BASE_PRODUCTS=[
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,min:8,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,min:8,desc:'Suave, cremosa e delicada.'}
 ];
-const STORE='de_v34_';
+const STORE='de_v35_';
 const STORE_ADDRESS='Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 let deliveryInfo={type:'retirada',distanceKm:null,durationMin:null,fee:0,status:'Retirada na loja'};
 let inventory=JSON.parse(localStorage.getItem(STORE+'inventory')||'null')||BASE_PRODUCTS.map(p=>({id:p.id,stock:p.stock,min:p.min}));
@@ -142,16 +142,17 @@ async function calculateDeliveryDistance(){
   const data=await res.json();
   if(!res.ok || data.error) throw new Error(data.error||'Falha na API');
   const km=Number(data.distanceKm||0);
+  if(!km || km>30) throw new Error('Distância incompatível. Confira o endereço.');
   const fee=km<=2?5:10;
   deliveryInfo={type:'entrega',distanceKm:km,durationMin:data.durationMin?Number(data.durationMin):null,fee,status:'Frete calculado'};
-  if(box){box.innerHTML=`<b>📍 Distância: ${km.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b>${data.durationMin?`<br><small>Tempo estimado: ${Math.round(data.durationMin)} min</small>`:''}`}
+  if(box){box.innerHTML=`<b>📍 Distância: ${km.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b>${data.durationMin?`<br><small>Tempo estimado: ${Math.round(data.durationMin)} min</small>`:''}${data.matchedAddress?`<br><small>Endereço localizado: ${data.matchedAddress}</small>`:''}`}
   say(km<=2?`Boa! Esse endereço está dentro da área próxima. Frete: ${BRL(5)} 💖`:`Esse endereço fica a ${km.toFixed(1).replace('.',',')} km. Frete: ${BRL(10)} 🚚`);
  }catch(e){
   const cep=onlyDigits($('#cep')?.value||'');
-  const fallback=(cep.startsWith('30865')||cep.startsWith('3086'))?1.8:3.2;
+  const fallback=(cep.startsWith('30865'))?1.8:3.2;
   const fee=fallback<=2?5:10;
-  deliveryInfo={type:'entrega',distanceKm:fallback,durationMin:null,fee,status:'Frete aproximado - API indisponível'};
-  if(box){box.innerHTML=`<b>⚠ Frete aproximado</b><br><b>📍 Distância estimada: ${fallback.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b><br><small>Configure OPENROUTESERVICE_API_KEY na Vercel para cálculo real.</small>`}
+  deliveryInfo={type:'entrega',distanceKm:fallback,durationMin:null,fee,status:'Frete aproximado - conferir'};
+  if(box){box.innerHTML=`<b>⚠ Não consegui confirmar a rota real</b><br><b>📍 Distância estimada: ${fallback.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b><br><small>${e.message||'Confira CEP, rua, número e bairro.'}</small>`}
  }
  updateTotals();
 }
