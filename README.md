@@ -1,13 +1,20 @@
-# Doce Encanto v24 — Trufita AI
+# Doce Encanto V26 - Identidade Fixa da Trufita AI
 
-Versão focada na Trufita AI como vendedora virtual.
+Esta versão corrige um ponto essencial: a mascote oficial não será mais trocada.
 
-## Novidades
-- Encantina AI renomeada para **Trufita AI**.
-- Chat com campo para o cliente perguntar livremente.
-- Respostas sobre sabores, estoque, promoção, pagamento, entrega, retirada e recomendações.
-- Sugestões rápidas no chat: menos doce, sabores de hoje, orçamento de R$20 e promoção.
-- Mantém carrinho, checkout, Pix, central da empresa, estoque, PWA e modo claro/escuro da V23.
+## Ajustes da V26
+
+- Trufita AI volta para a imagem oficial aprovada: trufinha com laço rosa.
+- Logo do topo usa a própria Trufita.
+- Mascote com animações de vida: flutuar, respirar, piscar, acenar, pular e apontar para o Pix.
+- Trufita AI continua com respostas melhores como vendedora da Doce Encanto.
+- Mantém carrinho, checkout, Pix, modo claro/escuro, central, estoque e PWA da V25.
 
 ## Como publicar
-Envie todo o conteúdo desta pasta para a raiz do repositório GitHub `doce-encantos`.
+
+1. Extraia o ZIP.
+2. Abra a pasta extraída.
+3. Selecione tudo de dentro da pasta.
+4. Envie no GitHub em Add file -> Upload files.
+5. Clique em Commit changes.
+6. Aguarde o deploy automático da Vercel.

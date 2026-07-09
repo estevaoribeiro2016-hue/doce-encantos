@@ -3,146 +3,138 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Doce Encanto | Sistema Oficial</title>
-  <meta name="theme-color" content="#ff69bd" />
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/assets/style.css" />
+  <title>Doce Encanto | V26 Identidade Fixa</title>
+  <meta name="theme-color" content="#7a3f2b" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#inicio" data-route="inicio">
-      <img src="/assets/trufinha.png" alt="Mascote Doce Encanto" />
-      <span><b>Doce Encanto</b><small>Mais que doce, é sentimento.</small></span>
+    <a class="brand" href="#home" aria-label="Doce Encanto">
+      <span class="mini-mascot"><img src="assets/trufita-oficial.png" alt="Trufita AI" /></span>
+      <span>Doce Encanto</span>
     </a>
     <nav>
       <a href="#cardapio">Cardápio</a>
-      <a href="#promocao">Promoção</a>
-      <a href="#cliente">Meu pedido</a>
+      <a href="#checkout">Pagamento</a>
+      <a href="#cliente">Cliente</a>
       <a href="#empresa">Empresa</a>
     </nav>
-    <button class="ghost" id="themeBtn" type="button">🌙</button>
-    <button class="cart-btn" id="cartBtn" type="button">🛒 <span id="cartCount">0</span></button>
+    <div class="actions">
+      <button id="themeToggle" class="ghost">🌙</button>
+      <button id="cartOpen" class="cart-btn">🛒 <b id="cartCount">0</b></button>
+    </div>
   </header>
 
-  <main>
-    <section id="inicio" class="hero screen active">
+  <main id="home">
+    <section class="hero">
       <div class="hero-copy">
-        <span class="pill">Pedido por WhatsApp • Pix disponível</span>
-        <h1>Seu momento doce começa aqui ✨</h1>
-        <p>Escolha suas trufas, monte o carrinho e finalize com uma mensagem profissional pelo WhatsApp.</p>
-        <div class="actions"><a class="btn" href="#cardapio">Ver cardápio</a><button class="btn light" id="openAi" type="button">Trufita AI</button></div>
+        <p class="eyebrow">Trufas artesanais • Doce Encanto</p>
+        <h1>Uma experiência doce, moderna e encantadora.</h1>
+        <p class="lead">Monte seu pedido, fale com a Trufita AI, escolha retirada ou entrega e finalize pelo Pix ou na loja.</p>
+        <div class="hero-actions">
+          <a class="primary" href="#cardapio">Ver cardápio</a>
+          <a class="secondary" id="waContact" href="https://wa.me/5531992180872" target="_blank">WhatsApp</a>
+        </div>
       </div>
-      <div class="mascot-card">
-        <img class="mascot alive" id="mascot" src="/assets/trufinha.png" alt="Trufita AI" />
-        <p id="mascotSpeech">Oi! Eu sou a Trufita AI 💖</p>
+      <div class="mascot-wrap" aria-label="Trufita AI mascote animada">
+        <div id="trufita" class="trufita official-mascot" aria-label="Mascote oficial Trufita AI">
+          <img class="trufita-img" src="assets/trufita-oficial.png" alt="Trufita AI, mascote oficial da Doce Encanto" />
+          <span class="blink-layer left"></span>
+          <span class="blink-layer right"></span>
+          <span class="sparkle s1">✦</span>
+          <span class="sparkle s2">❤</span>
+          <span class="wave-hand">👋</span>
+        </div>
+        <div class="speech" id="trufitaSpeech">Oi! Eu sou a <b>Trufita AI</b>, mascote oficial da Doce Encanto. Agora minha imagem não será mais trocada 💖</div>
       </div>
     </section>
 
-    <section id="promocao" class="promo screen">
-      <div class="section-title"><span>Promoção especial</span><h2>3 trufas por R$ 14,00</h2><p>Escolha 3 unidades. Pode repetir sabor: 3 maracujá, 2 oreo + 1 coco, ou como quiser.</p></div>
-      <div class="promo-box">
-        <div id="promoSelectors" class="selectors"></div>
-        <button class="btn wide" id="addPromo" type="button">Adicionar promoção ao carrinho</button>
+    <section class="panel promo-panel">
+      <div>
+        <h2>Promoção: 3 trufas por R$14</h2>
+        <p>Escolha qualquer combinação. Pode repetir sabores, como 3 Maracujá ou 2 Maracujá + 1 Oreo.</p>
+      </div>
+      <div class="promo-picker" id="promoPicker"></div>
+      <button class="primary" id="addPromo">Adicionar promoção</button>
+    </section>
+
+    <section id="cardapio" class="section">
+      <div class="section-title"><p>Cardápio</p><h2>Trufas disponíveis hoje</h2></div>
+      <div id="products" class="grid"></div>
+    </section>
+
+    <section class="section ai-section">
+      <div class="section-title"><p>Trufita AI 2.0</p><h2>Vendedora virtual da Doce Encanto</h2></div>
+      <div class="ai-box">
+        <div class="chat" id="chatLog"></div>
+        <form id="aiForm" class="chat-form">
+          <input id="aiInput" placeholder="Pergunte: qual trufa não é muito doce?" autocomplete="off" />
+          <button class="primary">Enviar</button>
+        </form>
+        <div class="chips">
+          <button data-q="Qual trufa não é muito doce?">Menos doce</button>
+          <button data-q="Como funciona a promoção?">Promoção</button>
+          <button data-q="Tenho R$20, o que recomenda?">Tenho R$20</button>
+          <button data-q="Aceita cartão?">Pagamento</button>
+          <button data-q="Quero presentear alguém">Presente</button>
+        </div>
       </div>
     </section>
 
-    <section id="cardapio" class="catalog screen">
-      <div class="section-title"><span>Cardápio</span><h2>Trufas artesanais</h2><p>Estoque controlado pela central. Se acabar, o sabor fica indisponível.</p></div>
-      <div class="grid" id="productsGrid"></div>
-    </section>
-
-    <section id="checkout" class="checkout screen">
-      <button class="linkbtn" data-route="cardapio">← Voltar ao cardápio</button>
-      <div class="section-title"><span>Pagamento</span><h2>Concluir pedido</h2></div>
+    <section id="checkout" class="section checkout-section">
+      <div class="section-title"><p>Finalização</p><h2>Pagamento e retirada</h2></div>
       <div class="checkout-grid">
         <div class="panel">
-          <h3>1. Recebimento</h3>
-          <label><input type="radio" name="fulfillment" value="retirada" checked /> Retirar na loja</label>
-          <label><input type="radio" name="fulfillment" value="entrega" /> Entrega</label>
-          <div id="deliveryFields" class="hidden fields">
+          <h3>1. Como deseja receber?</h3>
+          <label><input type="radio" name="fulfillment" value="retirada" checked> Retirar na loja</label>
+          <label><input type="radio" name="fulfillment" value="entrega"> Entrega</label>
+          <div id="addressBox" class="hidden">
             <input id="cep" placeholder="CEP" />
             <input id="rua" placeholder="Rua" />
             <input id="numero" placeholder="Número da residência" />
             <input id="bairro" placeholder="Bairro" />
           </div>
-          <p id="pickupAddress" class="note">Retirada: Rua Aletes, 78, Pindorama, 30865-180.</p>
+          <p class="store-address" id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, 30865-180.</p>
         </div>
         <div class="panel">
-          <h3>2. Pagamento</h3>
-          <div class="pay-options" id="payOptions"></div>
-          <div id="pixBox" class="pix-box hidden">
-            <img src="/assets/pix-qrcode.png" alt="QR Code Pix" />
-            <button class="btn light wide" id="copyPix" type="button">Copiar Pix copia e cola</button>
+          <h3>2. Forma de pagamento</h3>
+          <select id="paymentMethod">
+            <option value="pix">Pix</option>
+            <option value="dinheiro">Dinheiro na retirada</option>
+            <option value="cartao">Cartão na retirada</option>
+          </select>
+          <div id="pixBox" class="pix-box">
+            <div class="fake-qr">PIX<br><small>QR</small></div>
+            <textarea id="pixCode" readonly>00020126360014BR.GOV.BCB.PIX011431992180872520400005303986540514.005802BR5919INGRID EMANUELLE6009BELO HORIZONTE62070503***6304ABCD</textarea>
+            <button id="copyPix" class="secondary" type="button">Copiar Pix copia e cola</button>
           </div>
-          <label class="upload">Enviar comprovante Pix<input type="file" id="receipt" accept="image/*,.pdf" /></label>
-          <p id="receiptStatus" class="note"></p>
         </div>
-        <div class="panel summary">
-          <h3>Resumo</h3>
+        <div class="panel total-panel">
+          <h3>3. Resumo</h3>
           <div id="checkoutItems"></div>
-          <b>Total: <span id="checkoutTotal">R$ 0,00</span></b>
-          <input id="clientName" placeholder="Seu nome" />
-          <input id="clientPhone" placeholder="Seu WhatsApp" />
-          <button class="btn wide" id="sendOrder" type="button">Finalizar pedido no WhatsApp</button>
+          <div class="line"><span>Produtos</span><b id="subtotal">R$0,00</b></div>
+          <div class="line"><span>Frete</span><b id="frete">R$0,00</b></div>
+          <div class="line total"><span>Total</span><b id="grandTotal">R$0,00</b></div>
+          <button id="finishOrder" class="primary full">Finalizar pedido no WhatsApp</button>
         </div>
       </div>
     </section>
 
-    <section id="cliente" class="client screen">
-      <button class="linkbtn" data-route="inicio">← Voltar ao início</button>
-      <div class="section-title"><span>Área do cliente</span><h2>Acompanhar pedido</h2></div>
-      <div id="clientOrders" class="orders"></div>
-    </section>
-
-    <section id="empresa" class="company screen">
-      <button class="linkbtn" data-route="inicio">← Voltar ao início</button>
-      <div id="loginBox" class="login panel">
-        <h2>Central da empresa</h2>
-        <p>Entre com seu usuário e senha.</p>
-        <input id="user" placeholder="Usuário" autocomplete="username" />
-        <input id="pass" placeholder="Senha" type="password" autocomplete="current-password" />
-        <button class="btn wide" id="loginBtn" type="button">Entrar</button>
-        <p id="loginError" class="error"></p>
-      </div>
-      <div id="dashboard" class="hidden dashboard">
-        <div class="dash-head"><h2>Centro de Controle</h2><button class="ghost" id="logoutBtn" type="button">Sair</button></div>
-        <div class="stats" id="stats"></div>
-        <div class="dash-grid">
-          <div class="panel"><h3>Estoque</h3><div id="stockEditor"></div></div>
-          <div class="panel"><h3>Pedidos</h3><div id="adminOrders"></div></div>
-          <div class="panel"><h3>Produção</h3><div id="production"></div></div>
-          <div class="panel"><h3>Financeiro e relatórios</h3><div id="finance"></div></div>
-        </div>
-      </div>
+    <section id="cliente" class="section two-col">
+      <div class="panel"><h2>Área do Cliente</h2><p>Acompanhe o status do pedido: recebido, produção, pronto e entregue.</p><div id="clientOrders"></div></div>
+      <div id="empresa" class="panel"><h2>Central da Empresa</h2><p>Login protegido para gerenciar pedidos, estoque, produção, financeiro e relatórios.</p><div class="login"><input id="user" placeholder="Usuário" /><input id="pass" type="password" placeholder="Senha" /><button id="loginBtn" class="primary">Entrar</button></div><div id="adminPanel" class="hidden"></div></div>
     </section>
   </main>
 
-  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true">
-    <div class="cart-head"><button class="linkbtn" id="closeCart">← Voltar</button><button class="linkbtn danger" id="clearCart">Limpar</button></div>
-    <h2>🛒 Meu pedido</h2>
+  <aside id="cartDrawer" class="drawer">
+    <div class="drawer-head"><h2>Meu pedido</h2><button id="cartClose">Voltar</button></div>
     <div id="cartItems"></div>
-    <div class="cart-total">Total: <b id="cartTotal">R$ 0,00</b></div>
-    <button class="btn wide" id="goCheckout" type="button">Finalizar pedido</button>
+    <div class="drawer-total"><span>Total</span><b id="cartTotal">R$0,00</b></div>
+    <button id="clearCart" class="ghost full">Limpar carrinho</button>
+    <a href="#checkout" id="goCheckout" class="primary full">Ir para pagamento</a>
   </aside>
-
-  <div class="ai-pop" id="aiPop">
-    <button class="x" id="closeAi">×</button>
-    <b>Trufita AI 🍫</b>
-    <p class="ai-subtitle">Sua vendedora virtual da Doce Encanto.</p>
-    <div id="aiMessages" class="ai-messages"></div>
-    <div class="ai-suggestions">
-      <button type="button" data-ai="Qual trufa não é muito doce?">Menos doce</button>
-      <button type="button" data-ai="Quais sabores tem hoje?">Sabores de hoje</button>
-      <button type="button" data-ai="Tenho R$20, o que você recomenda?">Tenho R$20</button>
-      <button type="button" data-ai="Como funciona a promoção?">Promoção</button>
-    </div>
-    <form id="aiForm" class="ai-form">
-      <input id="aiInput" placeholder="Pergunte para a Trufita..." autocomplete="off" />
-      <button type="submit">Enviar</button>
-    </form>
-  </div>
-
-  <a class="whats" href="https://wa.me/553192180872" target="_blank" rel="noreferrer">WhatsApp</a>
-  <script src="/assets/app.js"></script>
+  <div id="overlay" class="overlay"></div>
+  <script src="assets/app.js"></script>
 </body>
 </html>
