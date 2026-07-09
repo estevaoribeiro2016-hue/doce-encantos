@@ -6,7 +6,7 @@ const BASE_PRODUCTS=[
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,min:8,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,min:8,desc:'Suave, cremosa e delicada.'}
 ];
-const STORE='de_v40_';
+const STORE='de_v44_';
 const STORE_ADDRESS='Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 let deliveryInfo={type:'retirada',fee:0,status:'Retirada na loja',method:'Retirada',applied:false,region:''};
 const DELIVERY_MODE='Uber Moto';
@@ -38,6 +38,7 @@ let inventory=JSON.parse(localStorage.getItem(STORE+'inventory')||'null')||BASE_
 let products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));
 let cart=JSON.parse(localStorage.getItem(STORE+'cart')||'[]');
 let orders=JSON.parse(localStorage.getItem(STORE+'orders')||'[]');
+let stockMovements=JSON.parse(localStorage.getItem(STORE+'stockMovements')||'[]');
 let promo=[]; let currentAdmin=null;
 const ADMIN_USERS={
   'teteu.trufa':{name:'Teteu',role:'Administrador',fullAccess:true},
@@ -73,15 +74,62 @@ async function registerFaceId(){
   alert('Face ID/Windows Hello cadastrado para este usuário neste aparelho. A senha continuará sendo exigida primeiro.');
 }
 const productById=id=>products.find(p=>p.id===id);
-const cartQty=id=>cart.reduce((a,i)=>a+(i.id===id?i.qty:0)+(i.flavors?i.flavors.filter(f=>f.id===id).length:0),0);
+const cartQty=id=>cart.reduce((a,i)=>a+(i.id===id&&!i.flavors?i.qty:0)+(i.flavors?i.flavors.filter(f=>f.id===id).length*i.qty:0),0);
 const calc=()=>cart.reduce((a,i)=>a+i.price*i.qty,0);
-function save(){localStorage.setItem(STORE+'inventory',JSON.stringify(products.map(({id,stock,min})=>({id,stock,min}))));localStorage.setItem(STORE+'cart',JSON.stringify(cart));localStorage.setItem(STORE+'orders',JSON.stringify(orders));}
+function save(){localStorage.setItem(STORE+'inventory',JSON.stringify(products.map(({id,stock,min})=>({id,stock,min}))));localStorage.setItem(STORE+'cart',JSON.stringify(cart));localStorage.setItem(STORE+'orders',JSON.stringify(orders));localStorage.setItem(STORE+'stockMovements',JSON.stringify(stockMovements));}
 function syncProducts(){products=BASE_PRODUCTS.map(p=>({...p,...(products.find(i=>i.id===p.id)||{})}));save();renderProducts();renderPromo();renderCart();if(currentAdmin)renderAdmin();}
 function say(t){const s=$('#speech'); if(s)s.innerHTML=t;}
 function jump(t){say(t);const tr=$('#trufita'); if(tr){tr.classList.add('jump');setTimeout(()=>tr.classList.remove('jump'),800)}}
 function pointPix(t){say(t);const tr=$('#trufita'); if(tr){tr.classList.add('point');setTimeout(()=>tr.classList.remove('point'),2200)}}
 function confetti(){for(let i=0;i<26;i++){const e=document.createElement('span');e.className='confetti';e.textContent=['🍫','✨','💖','🎉'][i%4];e.style.left=Math.random()*100+'vw';e.style.animationDelay=Math.random()*.18+'s';document.body.append(e);setTimeout(()=>e.remove(),1400)}}
 function fly(btn,emoji){if(!btn)return;let r=btn.getBoundingClientRect(), c=$('#cartOpen').getBoundingClientRect(), el=document.createElement('div');el.className='fly';el.textContent=emoji;el.style.left=r.left+r.width/2+'px';el.style.top=r.top+r.height/2+'px';document.body.append(el);requestAnimationFrame(()=>{el.style.transform=`translate(${c.left-r.left}px,${c.top-r.top}px) scale(.25) rotate(360deg)`;el.style.opacity='.15'});setTimeout(()=>{el.remove();$('#cartOpen').classList.add('pop');setTimeout(()=>$('#cartOpen').classList.remove('pop'),500)},760)}
+
+function itemNeeds(item){
+ const needs={};
+ if(item.flavors){ item.flavors.forEach(f=>{needs[f.id]=(needs[f.id]||0)+item.qty}); }
+ else { needs[item.id]=(needs[item.id]||0)+item.qty; }
+ return needs;
+}
+function cartNeeds(){
+ const needs={};
+ cart.forEach(item=>{const n=itemNeeds(item); Object.keys(n).forEach(id=>needs[id]=(needs[id]||0)+n[id]);});
+ return needs;
+}
+function canAddCartItem(item){
+ const n=itemNeeds({...item,qty:1});
+ const current=cartNeeds();
+ for(const id of Object.keys(n)){ const p=productById(id); if(!p || current[id]+n[id]>p.stock) return false; }
+ return true;
+}
+function validateStockForCart(){
+ const needs=cartNeeds();
+ for(const id of Object.keys(needs)){ const p=productById(id); if(!p || needs[id]>p.stock) return {ok:false,msg:`Estoque insuficiente de ${p?p.name:id}. Disponível: ${p?p.stock:0}. No carrinho: ${needs[id]}.`}; }
+ return {ok:true};
+}
+function addStockMovement(type,productId,qty,reason,orderId=''){
+ const p=productById(productId);
+ stockMovements.unshift({id:'MOV'+Date.now()+Math.random().toString(16).slice(2,6),type,productId,productName:p?p.name:productId,qty,reason,orderId,date:new Date().toLocaleString('pt-BR'),balance:p?p.stock:0});
+ if(stockMovements.length>200) stockMovements=stockMovements.slice(0,200);
+}
+function applyStockForOrder(order,mode){
+ order.items.forEach(i=>{
+  const needs={};
+  if(i.flavors){i.flavors.forEach(f=>needs[f.id]=(needs[f.id]||0)+i.qty)} else needs[i.id]=(needs[i.id]||0)+i.qty;
+  Object.entries(needs).forEach(([id,qty])=>{let p=productById(id); if(!p)return; if(mode==='out'){p.stock=Math.max(0,p.stock-qty); addStockMovement('Saída',id,qty,'Pedido finalizado',order.id)} else {p.stock+=qty; addStockMovement('Entrada',id,qty,'Cancelamento/devolução de pedido',order.id)}});
+ });
+}
+function cancelOrder(orderId){
+ const o=orders.find(x=>x.id===orderId); if(!o)return;
+ if(!confirm('Cancelar este pedido e devolver as trufas ao estoque?'))return;
+ if(!o.stockReturned){applyStockForOrder(o,'in'); o.stockReturned=true;}
+ o.status='Cancelado'; o.cancelledAt=new Date().toLocaleString('pt-BR');
+ save(); syncProducts(); renderAdmin(); jump('Pedido cancelado e estoque devolvido. ✅');
+}
+function renderStockMovements(){
+ if(!stockMovements.length)return '<p class="emptyState">Nenhuma movimentação registrada ainda.</p>';
+ return `<div class="historyTable"><div class="historyHead"><b>Data</b><b>Tipo</b><b>Produto</b><b>Qtd</b></div>${stockMovements.slice(0,40).map(m=>`<div class="historyRow"><span>${m.date}</span><span>${m.type}</span><span>${m.productName}<br><small>${m.reason} ${m.orderId?'#'+m.orderId:''}</small></span><b>${m.qty}</b></div>`).join('')}</div>`;
+}
+
 function renderProducts(){
  $('#products').innerHTML=products.map(p=>{
   const out=p.stock<=0;
@@ -101,7 +149,7 @@ function renderPromo(){
 }
 function promoPlus(id,btn){const p=productById(id); if(promo.length>=3)return; if(cartQty(id)+promo.filter(x=>x===id).length>=p.stock)return say(`Você atingiu o limite de estoque de ${p.name}.`); promo.push(id); fly(btn,p.emoji); renderPromo(); if(promo.length===3){confetti();jump('Promoção desbloqueada! Agora é só adicionar ao carrinho 🎉')}}
 function promoMinus(id){let idx=promo.lastIndexOf(id); if(idx>=0){promo.splice(idx,1);renderPromo();}}
-function addPromo(){if(promo.length!==3)return;let flavors=promo.map(id=>({id,name:productById(id).name,emoji:productById(id).emoji})); cart.push({id:'promo-'+Date.now(),name:'Promoção 3 trufas',emoji:'🎁',qty:1,price:14,flavors}); promo=[]; save(); renderPromo(); renderCart(); jump('Promoção adicionada ao carrinho! 🛒');}
+function addPromo(){if(promo.length!==3)return;let flavors=promo.map(id=>({id,name:productById(id).name,emoji:productById(id).emoji}));let temp={id:'promo-'+Date.now(),name:'Promoção 3 trufas',emoji:'🎁',qty:1,price:14,flavors}; if(!canAddCartItem(temp)) return say('Não tem estoque suficiente para adicionar essa promoção.'); let key=flavors.map(f=>f.id).sort().join('|'); let existing=cart.find(i=>i.flavors && i.flavors.map(f=>f.id).sort().join('|')===key); if(existing) existing.qty++; else cart.push(temp); promo=[]; save(); renderPromo(); renderCart(); jump('Promoção adicionada ao carrinho! 🛒');}
 function suggestPromo(){promo=['maracuja','coco','oreo'].filter(id=>productById(id).stock>cartQty(id)).slice(0,3);renderPromo();say('Minha sugestão equilibrada: Maracujá, Coco e Oreo. Uma cítrica, uma suave e uma mais docinha 💖');}
 function addItem(id,btn){let p=productById(id); if(p.stock<=0)return say(`${p.name} está indisponível hoje.`); if(cartQty(id)>=p.stock)return say(`Você atingiu o limite de estoque de ${p.name}.`); let item=cart.find(i=>i.id===id&&!i.flavors); if(item)item.qty++; else cart.push({...p,qty:1}); fly(btn,p.emoji); jump(`${p.name} foi para o carrinho! Excelente escolha 🍫`); save(); renderCart();}
 function deliveryFee(){
@@ -139,8 +187,8 @@ function renderCart(){
  const totalQty=cart.reduce((a,i)=>a+i.qty,0); $('#cartCount').textContent=totalQty;
  const html=cart.length?cart.map((i,idx)=>`<div class="cartRow"><div><b>${i.emoji} ${i.name}</b><br><small>${i.flavors?i.flavors.map(f=>f.name).join(', '):''}</small></div><div class="qty"><button data-dec="${idx}">-</button><b>${i.qty}</b><button data-inc="${idx}">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
  $('#cartItems').innerHTML=html; $('#checkoutItems').innerHTML=html;
- $$('[data-dec]').forEach(b=>b.onclick=()=>{let i=cart[b.dataset.dec];i.qty--;if(i.qty<=0)cart.splice(b.dataset.dec,1);save();renderCart()});
- $$('[data-inc]').forEach(b=>b.onclick=()=>{let i=cart[b.dataset.inc]; if(i.flavors)return; if(cartQty(i.id)>=productById(i.id).stock)return say(`Limite de ${i.name} atingido.`); i.qty++;save();renderCart()});
+ $$('[data-dec]').forEach(b=>b.onclick=()=>{let i=cart[Number(b.dataset.dec)];i.qty--;if(i.qty<=0)cart.splice(Number(b.dataset.dec),1);save();renderCart()});
+ $$('[data-inc]').forEach(b=>b.onclick=()=>{let i=cart[Number(b.dataset.inc)]; if(!canAddCartItem(i))return say('Não tem estoque suficiente para adicionar mais uma unidade desse item.'); i.qty++;save();renderCart()});
  updateTotals();
 }
 function aiAnswer(q){q=q.toLowerCase();if(/menos doce|não.*doce|nao.*doce|enjoativo/.test(q))return '💛 Eu recomendo a trufa de Maracujá. O recheio cítrico equilibra muito bem o chocolate e deixa o sabor menos enjoativo. Se quiser algo mais suave, Coco também é uma ótima escolha.';if(/promo|3|14/.test(q))return '🎉 A promoção é 3 trufas por R$14. Você pode escolher Brigadeiro, Oreo, Maracujá e Coco, repetindo sabores se quiser. Exemplo: 3 Maracujá ou 2 Oreo + 1 Coco.';if(/estoque|tem hoje|sabores/.test(q))return 'Hoje temos: '+products.map(p=>`${p.emoji} ${p.name}: ${p.stock>0?p.stock+' disponíveis':'indisponível'}`).join(', ')+'.';if(/20|vinte/.test(q))return 'Com R$20 eu aproveitaria a promoção de 3 por R$14. Minha sugestão: Maracujá, Oreo e Brigadeiro.';if(/presente|namorada|esposa|anivers/.test(q))return '🎁 Para presente eu montaria uma caixa com Brigadeiro, Oreo, Maracujá e Coco. Fica bonita, variada e agrada vários gostos.';if(/cart|dinheiro|pix|pagamento/.test(q))return 'Para retirada aceitamos Pix, dinheiro ou cartão. Para entrega, somente Pix.';return 'Me conta seu gosto: você prefere mais chocolate, mais docinha, mais suave ou mais equilibrada? Eu monto uma sugestão para você. 🍫'}
@@ -194,7 +242,8 @@ function finish(){
  const id='DE'+Date.now().toString().slice(-6);
  const sub=calc(), fee=f==='entrega'?deliveryFee():0, total=sub+fee;
  let order={id,customerName,customerPhone,items:cart,total,subtotal:sub,frete:fee,deliveryMethod:f==='entrega'?DELIVERY_MODE:'Retirada',bairro:$('#bairro')?.value||'',deliveryRegion:deliveryInfo.region||'',fulfillment:f,payment:pay,status:'Recebido',paymentStatus:pay==='pix'?'Aguardando comprovante':'Pagamento na retirada',created:new Date().toLocaleString('pt-BR'),address:f==='entrega'?deliveryAddressText():STORE_ADDRESS};
- order.items.forEach(i=>{if(i.flavors){i.flavors.forEach(f=>{let p=productById(f.id);p.stock=Math.max(0,p.stock-1)})}else{let p=productById(i.id);p.stock=Math.max(0,p.stock-i.qty)}});
+ const stockCheck=validateStockForCart(); if(!stockCheck.ok) return alert(stockCheck.msg);
+ applyStockForOrder(order,'out');
  orders.unshift(order);
  const msg=`🍫 *NOVO PEDIDO - DOCE ENCANTO*
 
@@ -238,6 +287,7 @@ Status: Recebido
 }
 function stockStatus(p){if(p.stock<=0)return ['Sem estoque','danger','Produzir hoje']; if(p.stock<=p.min)return ['Atenção','warn','Repor em breve']; return ['OK','ok','Estoque saudável'];}
 function orderIsDelivered(o){return normalizeText(o.status)==='entregue'}
+function orderIsCancelled(o){return normalizeText(o.status)==='cancelado'}
 function orderIsProduction(o){return ['recebido','producao','produção','pronto','saiu para entrega','aguardando retirada'].includes(normalizeText(o.status)) && !orderIsDelivered(o)}
 function nextProductionStatus(current, fulfillment){
  const c=normalizeText(current);
@@ -299,6 +349,7 @@ function renderPendingOrders(pending){
     ${o.fulfillment==='entrega'?`<button class="secondary" data-delivery="${o.id}">🛵 Saiu para entrega</button>`:''}
     <button class="secondary" data-delivered="${o.id}">✅ Entregue</button>
     <button class="ghost" data-chat="${o.id}">💬 Conversar</button>
+    <button class="ghost" data-cancel="${o.id}">❌ Cancelar</button>
    </div>
   </article>`).join('');
 }
@@ -316,27 +367,29 @@ function renderHistory(history){
  return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Finalizado</b></div>${history.map(o=>`<div class="historyRow"><span>#${o.id}</span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span>${o.deliveredAt||o.created}</span></div>`).join('')}</div>`;
 }
 function renderAdmin(){
- const pending=orders.filter(o=>!orderIsDelivered(o));
- const history=orders.filter(orderIsDelivered);
+ const pending=orders.filter(o=>!orderIsDelivered(o)&&!orderIsCancelled(o));
+ const history=orders.filter(o=>orderIsDelivered(o)||orderIsCancelled(o));
  const production=pending.filter(orderIsProduction);
  const revenue=orders.reduce((a,o)=>a+o.total,0), deliveredRevenue=history.reduce((a,o)=>a+o.total,0), today=pending.length, low=products.filter(p=>p.stock<=p.min).length, totalStock=products.reduce((a,p)=>a+p.stock,0);
  $('#adminPanel').innerHTML=`
  <div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos novos ficam em <b>pendentes</b> e só vão para o <b>histórico</b> quando você ou a Ingrid marcar como entregue.</p></div><button id="adminBack" class="secondary">Voltar ao site</button></div>
  <div class="dashCards"><div><small>Pendentes</small><b>${today}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Histórico</small><b>${history.length}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div>
- <div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="finance">💰 Financeiro</button></div>
+ <div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">📋 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div>
  <div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como <b>Entregue</b>.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div>
  <div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><p class="helper">Mostra apenas pedidos que ainda precisam ser preparados, separados por etapa.</p><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o=>normalizeText(o.status)==='recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o=>['producao','produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o=>['pronto','saiu para entrega','aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div>
  <div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico de pedidos entregues</h3><p class="helper">Pedidos entregues ficam salvos aqui com total, cliente e data.</p>${renderHistory(history)}</section></div>
  <div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><div class="stockTable">${products.map(p=>{let [label,cls,act]=stockStatus(p);return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`}).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div>
+ <div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>📋 Movimentação de estoque</h3><p class="helper">Entradas, saídas por pedido e devoluções ficam registradas aqui.</p>${renderStockMovements()}</section></div>
  <div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length?revenue/orders.length:0)}</b></div><div class="line"><span>Pedidos Pix</span><b>${orders.filter(o=>o.payment==='pix').length}</b></div></section></div>`;
  $('#adminBack').onclick=()=>location.hash='home';
  $$('[data-tabbtn]').forEach(btn=>btn.onclick=()=>{$$('[data-tabbtn]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$$('[data-tab]').forEach(p=>p.classList.toggle('active',p.dataset.tab===btn.dataset.tabbtn));});
- $('#saveStock')?.addEventListener('click',()=>{$$('[data-stock]').forEach(inp=>{let p=productById(inp.dataset.stock);p.stock=Math.max(0,Number(inp.value)||0)});$$('[data-min]').forEach(inp=>{let p=productById(inp.dataset.min);p.min=Math.max(1,Number(inp.value)||1)});save();syncProducts();jump('Estoque atualizado. O site já respeita os sabores disponíveis. ✅')});
+ $('#saveStock')?.addEventListener('click',()=>{$$('[data-stock]').forEach(inp=>{let p=productById(inp.dataset.stock);let old=p.stock;let next=Math.max(0,Number(inp.value)||0);p.stock=next;if(next!==old)addStockMovement(next>old?'Entrada':'Ajuste',p.id,Math.abs(next-old),'Ajuste manual de estoque')});$$('[data-min]').forEach(inp=>{let p=productById(inp.dataset.min);p.min=Math.max(1,Number(inp.value)||1)});save();syncProducts();jump('Estoque atualizado. O site já respeita os sabores disponíveis. ✅')});
  $$('[data-status]').forEach(sel=>sel.onchange=()=>{let o=orders.find(x=>x.id===sel.dataset.status);o.status=sel.value;if(orderIsDelivered(o)&&!o.deliveredAt)o.deliveredAt=new Date().toLocaleString('pt-BR');save();renderAdmin()});
  $$('[data-next]').forEach(btn=>btn.onclick=()=>{let o=orders.find(x=>x.id===btn.dataset.next);o.status=nextProductionStatus(o.status,o.fulfillment);if(orderIsDelivered(o)&&!o.deliveredAt)o.deliveredAt=new Date().toLocaleString('pt-BR');save();renderAdmin();});
  $$('[data-ready]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.ready,'Pronto','ready'));
  $$('[data-delivery]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivery,'Saiu para entrega','delivery'));
  $$('[data-delivered]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivered,'Entregue','delivered'));
+ $$('[data-cancel]').forEach(btn=>btn.onclick=()=>cancelOrder(btn.dataset.cancel));
  $$('[data-chat]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.chat); if(o) openClientWhatsApp(o,'')});
 }
 async function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if(ADMIN_USERS[u]&&p==='30707420'){const ok=await requireFaceId(u); if(!ok)return; currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}

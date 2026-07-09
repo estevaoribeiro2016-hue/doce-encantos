@@ -1,26 +1,24 @@
-# Doce Encanto v43
+# Doce Encanto - V44 Estoque Inteligente
 
-Versão completa com:
-- Finalizar pedido criando pedido pendente.
-- Botões + e - no resumo funcionando.
-- Promoção 3 trufas por R$ 14,00.
-- Trufas Brigadeiro, Oreo, Maracujá e Coco disponíveis.
-- Morango e Uva aparecem, mas ficam indisponíveis se status/estoque bloquear.
-- Estoque inteligente por sabor.
-- Desconto automático de estoque ao finalizar pedido.
-- Bloqueio de pedido quando não há estoque suficiente.
-- Devolução do estoque quando o pedido é cancelado.
-- Histórico de pedidos entregues/cancelados.
-- Histórico de movimentação de estoque.
-- Link automático para WhatsApp com mensagem pronta.
+Versão baseada na V42 HTML/CSS/JavaScript, mantendo a mesma estrutura do projeto.
 
-## Rodar
-1. Copie `.env.example` para `.env` e ajuste o DATABASE_URL.
-2. npm install
-3. npx prisma migrate dev --name init
-4. npm run seed
-5. npm run dev
+## Novidades da V44
 
-Abra:
-- http://localhost:3000/cardapio
-- http://localhost:3000/admin
+- Finalização do pedido revisada.
+- Botões + e - funcionando no carrinho e no resumo do checkout.
+- Promoção 3 por R$14 pode ser aumentada pelo botão +.
+- Validação de estoque antes de finalizar pedido.
+- Desconto automático do estoque quando o pedido é finalizado.
+- Bloqueio quando não houver trufas suficientes.
+- Cancelamento de pedido com devolução automática ao estoque.
+- Histórico de movimentação de estoque: entradas, saídas, ajustes e devoluções.
+- Painel administrativo com aba de movimentações.
+
+## Acesso empresa
+
+Usuários:
+- teteu.trufa
+- ingrid.trufa
+
+Senha:
+- 30707420
