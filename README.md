@@ -1,17 +1,17 @@
-# Doce Encanto V37 — Frete próximo corrigido
+# Doce Encanto V38 — Frete por região + Uber Moto
 
-Correção focada no problema real do frete:
+Versão focada em remover o cálculo de distância e deixar o frete simples, fixo e confiável.
 
-- Endereços claramente próximos da loja, como **Rua Arauto, 120 - Pindorama**, não podem virar 3,8 km.
-- A função `/api/distance` agora reconhece área local Pindorama/CEP 30865 e aplica distância operacional corrigida.
-- Frete mantido:
-  - até 2 km: **R$ 5,00**
-  - acima de 2 km: **R$ 10,00**
-- O checkout mostra quando o endereço foi reconhecido como área próxima da loja.
-- Mantém CEP automático, WhatsApp completo, Pix e central.
+## Frete
+- Pindorama: R$ 5,00
+- Filadélfia: R$ 5,00
+- Glória: R$ 6,00
+- Coqueiros: R$ 6,00
+- Demais bairros: R$ 10,00
 
-## Importante
-A variável `OPENROUTESERVICE_API_KEY` deve continuar configurada na Vercel.
+## Entrega
+- Texto visível: entrega realizada por Uber Moto.
+- Mensagem do WhatsApp inclui modalidade Uber Moto, endereço, bairro, região e frete aplicado.
 
 ## Atualização
-Extraia o ZIP, entre na pasta e envie todos os arquivos de dentro para a raiz do repositório no GitHub.
+Extraia o ZIP e envie todos os arquivos de dentro da pasta para a raiz do GitHub.

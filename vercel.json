@@ -1,5 +1,3 @@
 {
-  "functions": {
-    "api/distance.js": { "maxDuration": 10 }
-  }
+  "cleanUrls": true
 }
