@@ -66,22 +66,26 @@
     </section>
   </main>
 
+  <button class="cart-toggle" id="openCart">🛒 Ver carrinho <span id="cartBadge">0</span></button>
+
   <aside class="cart" id="cart">
-    <div class="cart-head"><h2>🛒 Carrinho</h2><button id="clearCart">Limpar</button></div>
+    <div class="cart-head">
+      <button class="back-cart" id="closeCart" type="button">← Voltar</button>
+      <h2>🛒 Carrinho</h2>
+      <button id="clearCart" type="button">Limpar</button>
+    </div>
     <div id="cartItems" class="cart-items"></div>
     <div class="total"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></div>
 
     <div class="checkout-box">
-      <h3>Forma de pagamento</h3>
-      <label class="pay"><input type="radio" name="payment" value="Pix" checked> Pix</label>
-      <label class="pay"><input type="radio" name="payment" value="Dinheiro"> Dinheiro</label>
-      <label class="pay"><input type="radio" name="payment" value="Cartão"> Cartão</label>
+      <h3>Pagamento via Pix</h3>
       <div class="pix-panel" id="pixPanel">
-        <h3>Pix</h3>
         <img src="assets/pix-qrcode.png" alt="QR Code Pix Doce Encanto" />
-        <label>Pix copia e cola</label>
-        <textarea readonly id="pixCopy">00020101021126360014br.gov.bcb.pix0114+55319921808725204000053039865802BR5918INGRID E DAMASCENO6013BELO HORIZONT62070503***6304041C</textarea>
-        <button class="btn secondary" id="copyPix">Copiar Pix</button>
+        <details class="pix-copy-box">
+          <summary>Pix copia e cola</summary>
+          <textarea readonly id="pixCopy">00020101021126360014br.gov.bcb.pix0114+55319921808725204000053039865802BR5918INGRID E DAMASCENO6013BELO HORIZONT62070503***6304041C</textarea>
+          <button class="btn secondary" id="copyPix" type="button">Copiar Pix</button>
+        </details>
       </div>
     </div>
     <button class="btn primary full" id="finishOrder">Finalizar pelo WhatsApp</button>

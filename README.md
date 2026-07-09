@@ -1,15 +1,10 @@
-# Doce Encanto V13
+# Doce Encanto v14
 
-Versão V13 completa para upload no GitHub/Vercel.
+Atualizações:
+- Carrinho com botão Voltar.
+- Botão Limpar corrigido e removendo cache antigo.
+- Pix simplificado: QR Code primeiro e Pix copia e cola em área expansível.
+- Promoção 3 por R$ 14 com escolha dos 3 sabores.
+- Mascote com animações web mais vivas: piscar, flutuar, reagir ao carrinho e ao Pix.
 
-## Itens principais
-- Mascote trufinha nítida com animação CSS.
-- Promoção 3 trufas por R$ 14 com escolha obrigatória dos 3 sabores entre Brigadeiro, Oreo, Maracujá e Coco.
-- Morango e Uva visíveis, mas indisponíveis.
-- Carrinho funcional com quantidade, remoção e total.
-- Pix com QR Code e Pix copia e cola.
-- WhatsApp com resumo do pedido.
-- Área do cliente, empresa e admin local.
-
-## Upload
-Envie o conteúdo desta pasta para a raiz do repositório GitHub.
+Observação: esta versão usa animação web/CSS sobre a mascote enviada. Para ficar igual aos vídeos de IA do TikTok em 3D real, o próximo passo é criar um modelo GLB/GLTF da Encantina com rig e animações.
