@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Doce Encanto — Sistema V21</title>
+  <title>Doce Encanto — Sistema V22</title>
   <meta name="theme-color" content="#ff6aa8" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="assets/style.css" />
@@ -13,7 +13,7 @@
     <header class="topbar">
       <a class="brand" href="#inicio" data-view="inicio">
         <img src="assets/mascote.png" alt="Mascote Doce Encanto" />
-        <span><strong>Doce Encanto</strong><small>Sistema V21</small></span>
+        <span><strong>Doce Encanto</strong><small>Sistema V22</small></span>
       </a>
       <nav class="desktop-nav">
         <a href="#cardapio">Cardápio</a>
@@ -23,6 +23,7 @@
       </nav>
       <div class="top-actions">
         <button class="theme-toggle" id="themeToggle" aria-label="Alternar aparência">🌙</button>
+        <button class="theme-toggle install-btn" id="installApp" aria-label="Instalar app">📱</button>
         <button class="cart-pill" id="openCart" aria-label="Abrir carrinho">🛒 <b id="cartCount">0</b></button>
       </div>
     </header>
@@ -30,17 +31,25 @@
     <main>
       <section id="inicio" class="hero view active">
         <div class="hero-copy">
-          <div class="badge">🍫 Loja premium • Pix • Encantina AI</div>
+          <div class="badge">🍫 Loja premium • Pix • Trufita AI</div>
           <h1>Seu momento doce começa aqui.</h1>
           <p>Escolha suas trufas, acompanhe o pedido, finalize no Pix ou retire na loja com dinheiro/cartão.</p>
           <div class="actions">
             <a href="#cardapio" class="btn primary">Ver cardápio</a>
+            <a href="#cliente" class="btn ghost">Área do cliente</a>
+            <a href="#empresa" class="btn ghost">Área da empresa</a>
             <a id="whatsBlank" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
+          </div>
+          <div class="access-grid">
+            <a href="#cliente" class="access-card">👤 <b>Cliente</b><small>Acompanhar pedido</small></a>
+            <a href="#empresa" class="access-card">🏢 <b>Empresa</b><small>Pedidos, estoque e relatórios</small></a>
+            <button class="access-card" id="installAppHero">📱 <b>Instalar app</b><small>PWA no celular</small></button>
+            <a href="#empresa" class="access-card">📊 <b>Relatórios</b><small>Acesso pela central</small></a>
           </div>
         </div>
         <div class="mascot-stage">
-          <div class="speech" id="mascotSpeech">Oi! Eu sou a Encantina. Hoje posso te ajudar a montar o pedido perfeito.</div>
-          <div class="mascot alive" id="mascot"><img src="assets/mascote.png" alt="Encantina AI" /></div>
+          <div class="speech" id="mascotSpeech">Oi! Eu sou a Trufita. Hoje posso te ajudar a montar o pedido perfeito.</div>
+          <div class="mascot alive" id="mascot"><img src="assets/mascote.png" alt="Trufita AI" /></div>
           <div class="shine one"></div><div class="shine two"></div>
         </div>
       </section>
@@ -123,10 +132,10 @@
 
             <div class="checkout-block proof-block">
               <h3>4. Comprovante Pix com IA</h3>
-              <p class="muted">Depois de pagar, envie o comprovante. A Encantina simula a leitura e marca o pedido como pagamento confirmado.</p>
+              <p class="muted">Depois de pagar, envie o comprovante. A Trufita simula a leitura e marca o pedido como pagamento confirmado.</p>
               <input id="pixProof" type="file" accept="image/*,.pdf" />
               <button class="btn ghost" id="scanPix" type="button">📷 Scanner Pix / IA</button>
-              <div id="proofStatus" class="info-box hidden">Pagamento confirmado pela Encantina AI ✅</div>
+              <div id="proofStatus" class="info-box hidden">Pagamento confirmado pela Trufita AI ✅</div>
             </div>
           </div>
 
@@ -176,9 +185,10 @@
       </section>
     </main>
 
-    <button class="ai-fab" id="openAi">🤖 Encantina AI</button>
+    <button class="cart-dock" id="cartDock" aria-label="Abrir carrinho">🛒 <b id="cartDockCount">0</b></button>
+    <button class="ai-fab" id="openAi">🤖 Trufita AI</button>
     <aside class="ai-panel" id="aiPanel">
-      <div class="panel-head"><strong>Encantina AI</strong><button id="closeAi">×</button></div>
+      <div class="panel-head"><strong>Trufita AI</strong><button id="closeAi">×</button></div>
       <div id="aiMessages" class="ai-messages"></div>
       <div class="quick-prompts">
         <button data-q="Não gosto muito de doce">Não gosto muito de doce</button>
