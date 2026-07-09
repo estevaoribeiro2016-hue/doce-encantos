@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doce Encanto | Trufas artesanais</title>
+  <meta name="description" content="Doce Encanto - trufas artesanais feitas com carinho. Faça seu pedido pelo WhatsApp." />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-icon">🍫</span>
+      <span><strong>Doce Encanto</strong><small>Mais que doce, é sentimento.</small></span>
+    </a>
+    <nav>
+      <a href="#cardapio">Cardápio</a><a href="#promocao">Promoção</a><a href="cliente/">Meu pedido</a><a href="empresa/">Empresa</a>
+    </nav>
+    <a class="whats" href="https://wa.me/553192180872" target="_blank">WhatsApp</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <span class="pill">Pedido por WhatsApp • Pix disponível</span>
+        <h1>Seu momento doce começa aqui ✨</h1>
+        <p>Escolha suas trufas favoritas, monte seu carrinho e finalize o pedido com mensagem pronta pelo WhatsApp.</p>
+        <div class="hero-actions"><a class="btn primary" href="#cardapio">Ver cardápio</a><button class="btn pink" onclick="openCart()">Fazer pedido</button></div>
+      </div>
+      <div class="hero-art">
+        <div class="mascot-card"><img class="mascot" src="assets/trufinha.png" alt="Mascote Trufinha Doce Encanto"><div class="bubble">Oi! Eu sou a Encantina AI 💖</div></div>
+        <div class="promo-card"><span>Promoção atual</span><strong>3 trufas por R$ 14,00</strong><small>Brigadeiro, Oreo, Maracujá e Coco.</small></div>
+      </div>
+    </section>
+
+    <section id="promocao" class="promo-banner"><div><span>Promoção especial</span><h2>3 trufas por R$ 14,00</h2><p>Perfeita para presentear ou adoçar o dia.</p></div><button class="btn primary" onclick="addPromo()">Adicionar promoção</button></section>
+
+    <section id="cardapio" class="section"><div class="section-title"><span>Cardápio oficial</span><h2>Trufas disponíveis</h2></div><div class="grid" id="productGrid"></div></section>
+
+    <section class="section soft"><div class="section-title"><span>Como funciona</span><h2>Pedido simples e rápido</h2></div><div class="steps"><article><b>1</b><h3>Escolha</h3><p>Adicione suas trufas ao carrinho.</p></article><article><b>2</b><h3>Pague</h3><p>Escolha Pix, dinheiro ou cartão. No Pix aparece o QR Code.</p></article><article><b>3</b><h3>Finalize</h3><p>A mensagem pronta abre no WhatsApp.</p></article></div></section>
+  </main>
+
+  <button class="ai-button" onclick="toggleAI()">💬 Encantina AI</button>
+  <aside class="ai-panel" id="aiPanel"><button class="close" onclick="toggleAI()">×</button><img src="assets/trufinha.png" alt="Encantina"><h3>Oi! Sou a Encantina AI</h3><p>Posso ajudar você a escolher uma trufa. Brigadeiro e Oreo são os queridinhos de hoje!</p><button onclick="document.location='#cardapio'">Ver cardápio</button></aside>
+
+  <aside class="cart" id="cart"><div class="cart-head"><h2>🛒 Carrinho</h2><button onclick="clearCart()">Limpar</button></div><div id="cartItems"></div><div class="total"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></div><label>Forma de pagamento</label><select id="payment" onchange="togglePix()"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option></select><div id="pixBox" class="pix-box"><h3>Pagamento via Pix</h3><img src="assets/pix-qrcode.png" alt="QR Code Pix"><p><b>Nome:</b> INGRID EMANUELLE DAMASCENO</p><p><b>Chave Pix:</b> (31) 99218-0872</p></div><button class="btn primary full" onclick="checkout()">Finalizar pedido</button><button class="cart-close" onclick="closeCart()">Fechar</button></aside>
+
+  <a class="float-whats" href="https://wa.me/553192180872" target="_blank">☘</a>
+  <footer>Doce Encanto © 2026 • Rua Aletes, 78, Pindorama — portão marrom.</footer>
+  <script src="assets/app.js"></script>
+</body>
+</html>
