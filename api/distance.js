@@ -2,6 +2,19 @@ const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte, MG, 30865-180,
 // Coordenada aproximada da loja. Usar coordenada fixa evita a API localizar a loja em outra cidade.
 const STORE_COORDS = [-44.0019, -19.9129]; // [lng, lat] - Pindorama/BH
 const MAX_REASONABLE_KM = 30;
+// Em bairros próximos, a rota da API às vezes dá volta grande ou localiza o trajeto errado.
+// Para evitar cobrar frete errado, usamos uma distância operacional mais conservadora:
+// se a rota vier muito maior que a linha reta, consideramos a linha reta com margem de rua.
+function operationalDistanceKm(routeKm, straightKm) {
+  const adjustedStraight = straightKm * 1.35;
+  if (routeKm > 2.5 && straightKm <= 2 && routeKm > adjustedStraight * 1.7) {
+    return adjustedStraight;
+  }
+  if (routeKm > 4 && straightKm <= 3 && routeKm > adjustedStraight * 1.8) {
+    return adjustedStraight;
+  }
+  return routeKm;
+}
 
 function haversineKm(a, b) {
   const R = 6371;
@@ -108,15 +121,19 @@ module.exports = async function handler(req, res) {
 
     const found = await geocodeDestination(destination, apiKey);
     const route = await routeDistance(STORE_COORDS, found.coords, apiKey);
-    const fee = route.distanceKm <= 2 ? 5 : 10;
+    const operationalKm = operationalDistanceKm(route.distanceKm, found.kmStraight);
+    const fee = operationalKm <= 2 ? 5 : 10;
 
     res.status(200).json({
       storeAddress: STORE_ADDRESS,
       destination,
       matchedAddress: found.label,
-      distanceKm: Number(route.distanceKm.toFixed(2)),
+      routeDistanceKm: Number(route.distanceKm.toFixed(2)),
+      straightDistanceKm: Number(found.kmStraight.toFixed(2)),
+      distanceKm: Number(operationalKm.toFixed(2)),
       durationMin: Math.round(route.durationMin),
       fee,
+      distanceMode: operationalKm !== route.distanceKm ? 'ajustada' : 'rota',
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Erro ao calcular distância' });
