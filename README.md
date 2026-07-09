@@ -1,20 +1,18 @@
-# Doce Encanto V26 - Identidade Fixa da Trufita AI
+# Doce Encanto V27 - Promoção Interativa
 
-Esta versão corrige um ponto essencial: a mascote oficial não será mais trocada.
+Versão focada em deixar a promoção 3 trufas por R$14 mais viva e divertida.
 
-## Ajustes da V26
+## Novidades
+- Promoção em formato de jogo: escolha 3 trufas.
+- Permite sabores repetidos.
+- Barra de progresso 0/3, 1/3, 2/3 e 3/3.
+- Slots visuais mostrando as trufas escolhidas.
+- Botão “Quero sugestão da Trufita”.
+- Trufita orienta a escolha e comemora quando completa.
+- Confetes ao desbloquear a promoção.
+- Animação da trufa voando até o carrinho.
+- Carrinho com pop ao receber item.
+- Mantém checkout, Pix, WhatsApp, modo claro/escuro e central.
 
-- Trufita AI volta para a imagem oficial aprovada: trufinha com laço rosa.
-- Logo do topo usa a própria Trufita.
-- Mascote com animações de vida: flutuar, respirar, piscar, acenar, pular e apontar para o Pix.
-- Trufita AI continua com respostas melhores como vendedora da Doce Encanto.
-- Mantém carrinho, checkout, Pix, modo claro/escuro, central, estoque e PWA da V25.
-
-## Como publicar
-
-1. Extraia o ZIP.
-2. Abra a pasta extraída.
-3. Selecione tudo de dentro da pasta.
-4. Envie no GitHub em Add file -> Upload files.
-5. Clique em Commit changes.
-6. Aguarde o deploy automático da Vercel.
+## Como atualizar
+Extraia o ZIP, selecione tudo de dentro da pasta e envie para o GitHub na raiz do repositório.

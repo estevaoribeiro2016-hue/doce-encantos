@@ -3,137 +3,87 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Doce Encanto | V26 Identidade Fixa</title>
-  <meta name="theme-color" content="#7a3f2b" />
+  <title>Doce Encanto | V27 Promoção Interativa</title>
+  <meta name="theme-color" content="#ff69a8" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#home" aria-label="Doce Encanto">
-      <span class="mini-mascot"><img src="assets/trufita-oficial.png" alt="Trufita AI" /></span>
-      <span>Doce Encanto</span>
-    </a>
-    <nav>
-      <a href="#cardapio">Cardápio</a>
-      <a href="#checkout">Pagamento</a>
-      <a href="#cliente">Cliente</a>
-      <a href="#empresa">Empresa</a>
-    </nav>
-    <div class="actions">
-      <button id="themeToggle" class="ghost">🌙</button>
-      <button id="cartOpen" class="cart-btn">🛒 <b id="cartCount">0</b></button>
-    </div>
+    <a class="brand" href="#home"><img src="assets/trufita-oficial.png" alt="Trufita AI"><span>Doce Encanto</span></a>
+    <nav><a href="#promo">Promoção</a><a href="#cardapio">Cardápio</a><a href="#trufita-ai">Trufita AI</a><a href="#empresa">Empresa</a></nav>
+    <div class="actions"><button id="themeToggle" class="ghost">🌙</button><button id="cartOpen" class="cartBtn">🛒 <b id="cartCount">0</b></button></div>
   </header>
 
   <main id="home">
     <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Trufas artesanais • Doce Encanto</p>
-        <h1>Uma experiência doce, moderna e encantadora.</h1>
-        <p class="lead">Monte seu pedido, fale com a Trufita AI, escolha retirada ou entrega e finalize pelo Pix ou na loja.</p>
-        <div class="hero-actions">
-          <a class="primary" href="#cardapio">Ver cardápio</a>
-          <a class="secondary" id="waContact" href="https://wa.me/5531992180872" target="_blank">WhatsApp</a>
-        </div>
+      <div class="copy">
+        <p class="tag">Trufas artesanais • retirada ou entrega</p>
+        <h1>Seu momento doce começa aqui ✨</h1>
+        <p class="lead">Monte seu pedido, aproveite a promoção interativa e finalize pelo WhatsApp com pagamento Pix.</p>
+        <div class="cta"><a class="primary" href="#promo">Montar promoção</a><a class="secondary" href="#cardapio">Ver cardápio</a></div>
       </div>
-      <div class="mascot-wrap" aria-label="Trufita AI mascote animada">
-        <div id="trufita" class="trufita official-mascot" aria-label="Mascote oficial Trufita AI">
-          <img class="trufita-img" src="assets/trufita-oficial.png" alt="Trufita AI, mascote oficial da Doce Encanto" />
-          <span class="blink-layer left"></span>
-          <span class="blink-layer right"></span>
-          <span class="sparkle s1">✦</span>
-          <span class="sparkle s2">❤</span>
-          <span class="wave-hand">👋</span>
-        </div>
-        <div class="speech" id="trufitaSpeech">Oi! Eu sou a <b>Trufita AI</b>, mascote oficial da Doce Encanto. Agora minha imagem não será mais trocada 💖</div>
+      <div class="mascotArea">
+        <div id="trufita" class="trufita"><img src="assets/trufita-oficial.png" alt="Trufita AI"><span class="wave">👋</span><span class="sparkle">✨</span></div>
+        <div id="speech" class="speech">Oi! Eu sou a <b>Trufita AI</b> 💖 Vou te ajudar a montar a promoção.</div>
       </div>
     </section>
 
-    <section class="panel promo-panel">
-      <div>
-        <h2>Promoção: 3 trufas por R$14</h2>
-        <p>Escolha qualquer combinação. Pode repetir sabores, como 3 Maracujá ou 2 Maracujá + 1 Oreo.</p>
+    <section id="promo" class="promoMaster">
+      <div class="promoHeader">
+        <p class="tag">🔥 Promoção da semana</p>
+        <h2>Monte sua caixa: <span>3 trufas por R$14</span></h2>
+        <p>Escolha 3 sabores. Pode repetir: 3 Maracujá, 2 Oreo + 1 Coco, ou qualquer combinação.</p>
       </div>
-      <div class="promo-picker" id="promoPicker"></div>
-      <button class="primary" id="addPromo">Adicionar promoção</button>
+
+      <div class="promoGame">
+        <div class="promoStatus" id="promoStatus">
+          <div class="slots"><span></span><span></span><span></span></div>
+          <div class="progress"><i id="promoProgress"></i></div>
+          <b id="promoCounter">0 de 3 escolhidas</b>
+        </div>
+
+        <div id="promoChoices" class="promoChoices"></div>
+
+        <div class="promoResult" id="promoResult">
+          <h3>🎯 Objetivo: escolha 3 trufas</h3>
+          <p id="promoMsg">A Trufita pode sugerir uma combinação deliciosa para você.</p>
+          <div class="promoButtons">
+            <button id="suggestPromo" class="secondary">💖 Quero sugestão da Trufita</button>
+            <button id="resetPromo" class="ghost">Limpar seleção</button>
+            <button id="addPromo" class="primary" disabled>Adicionar promoção</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="cardapio" class="section">
-      <div class="section-title"><p>Cardápio</p><h2>Trufas disponíveis hoje</h2></div>
+      <div class="sectionTitle"><p class="tag">Cardápio</p><h2>Trufas disponíveis</h2></div>
       <div id="products" class="grid"></div>
     </section>
 
-    <section class="section ai-section">
-      <div class="section-title"><p>Trufita AI 2.0</p><h2>Vendedora virtual da Doce Encanto</h2></div>
-      <div class="ai-box">
-        <div class="chat" id="chatLog"></div>
-        <form id="aiForm" class="chat-form">
-          <input id="aiInput" placeholder="Pergunte: qual trufa não é muito doce?" autocomplete="off" />
-          <button class="primary">Enviar</button>
-        </form>
-        <div class="chips">
-          <button data-q="Qual trufa não é muito doce?">Menos doce</button>
-          <button data-q="Como funciona a promoção?">Promoção</button>
-          <button data-q="Tenho R$20, o que recomenda?">Tenho R$20</button>
-          <button data-q="Aceita cartão?">Pagamento</button>
-          <button data-q="Quero presentear alguém">Presente</button>
-        </div>
+    <section id="trufita-ai" class="section aiBox">
+      <div class="sectionTitle"><p class="tag">Trufita AI</p><h2>Vendedora virtual</h2></div>
+      <div class="chatWrap">
+        <div id="chatLog" class="chat"></div>
+        <form id="aiForm" class="chatForm"><input id="aiInput" placeholder="Pergunte: qual trufa não é muito doce?" autocomplete="off"><button class="primary">Enviar</button></form>
+        <div class="chips"><button data-q="Qual trufa não é muito doce?">Menos doce</button><button data-q="Como funciona a promoção?">Promoção</button><button data-q="Tenho R$20">Tenho R$20</button><button data-q="Quero presentear alguém">Presente</button></div>
       </div>
     </section>
 
-    <section id="checkout" class="section checkout-section">
-      <div class="section-title"><p>Finalização</p><h2>Pagamento e retirada</h2></div>
-      <div class="checkout-grid">
-        <div class="panel">
-          <h3>1. Como deseja receber?</h3>
-          <label><input type="radio" name="fulfillment" value="retirada" checked> Retirar na loja</label>
-          <label><input type="radio" name="fulfillment" value="entrega"> Entrega</label>
-          <div id="addressBox" class="hidden">
-            <input id="cep" placeholder="CEP" />
-            <input id="rua" placeholder="Rua" />
-            <input id="numero" placeholder="Número da residência" />
-            <input id="bairro" placeholder="Bairro" />
-          </div>
-          <p class="store-address" id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, 30865-180.</p>
-        </div>
-        <div class="panel">
-          <h3>2. Forma de pagamento</h3>
-          <select id="paymentMethod">
-            <option value="pix">Pix</option>
-            <option value="dinheiro">Dinheiro na retirada</option>
-            <option value="cartao">Cartão na retirada</option>
-          </select>
-          <div id="pixBox" class="pix-box">
-            <div class="fake-qr">PIX<br><small>QR</small></div>
-            <textarea id="pixCode" readonly>00020126360014BR.GOV.BCB.PIX011431992180872520400005303986540514.005802BR5919INGRID EMANUELLE6009BELO HORIZONTE62070503***6304ABCD</textarea>
-            <button id="copyPix" class="secondary" type="button">Copiar Pix copia e cola</button>
-          </div>
-        </div>
-        <div class="panel total-panel">
-          <h3>3. Resumo</h3>
-          <div id="checkoutItems"></div>
-          <div class="line"><span>Produtos</span><b id="subtotal">R$0,00</b></div>
-          <div class="line"><span>Frete</span><b id="frete">R$0,00</b></div>
-          <div class="line total"><span>Total</span><b id="grandTotal">R$0,00</b></div>
-          <button id="finishOrder" class="primary full">Finalizar pedido no WhatsApp</button>
-        </div>
+    <section id="checkout" class="section checkout">
+      <div class="sectionTitle"><p class="tag">Checkout</p><h2>Finalize seu pedido</h2></div>
+      <div class="checkoutGrid">
+        <div class="panel"><h3>Recebimento</h3><label><input type="radio" name="fulfillment" value="retirada" checked> Retirada na loja</label><label><input type="radio" name="fulfillment" value="entrega"> Entrega</label><p id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, 30865-180.</p><div id="addressBox" class="hidden"><input id="cep" placeholder="CEP"><input id="rua" placeholder="Rua"><input id="numero" placeholder="Número"><input id="bairro" placeholder="Bairro"></div></div>
+        <div class="panel"><h3>Pagamento</h3><select id="payment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro na retirada</option><option value="cartao">Cartão na retirada</option></select><div id="pixBox" class="pixBox"><div class="qr">PIX<br><small>QR</small></div><textarea id="pixCode" readonly>00020126360014BR.GOV.BCB.PIX011431992180872520400005303986540514.005802BR5919INGRID EMANUELLE6009BELO HORIZONTE62070503***6304ABCD</textarea><button id="copyPix" class="secondary" type="button">Copiar Pix copia e cola</button></div></div>
+        <div class="panel"><h3>Resumo</h3><div id="checkoutItems"></div><div class="line"><span>Produtos</span><b id="subtotal">R$0,00</b></div><div class="line"><span>Frete</span><b id="frete">R$0,00</b></div><div class="line total"><span>Total</span><b id="grandTotal">R$0,00</b></div><button id="finishOrder" class="primary full">Finalizar pedido</button></div>
       </div>
     </section>
 
-    <section id="cliente" class="section two-col">
-      <div class="panel"><h2>Área do Cliente</h2><p>Acompanhe o status do pedido: recebido, produção, pronto e entregue.</p><div id="clientOrders"></div></div>
-      <div id="empresa" class="panel"><h2>Central da Empresa</h2><p>Login protegido para gerenciar pedidos, estoque, produção, financeiro e relatórios.</p><div class="login"><input id="user" placeholder="Usuário" /><input id="pass" type="password" placeholder="Senha" /><button id="loginBtn" class="primary">Entrar</button></div><div id="adminPanel" class="hidden"></div></div>
-    </section>
+    <section id="empresa" class="section"><div class="panel"><h2>Central da Empresa</h2><p>Pedidos, estoque, produção e financeiro.</p><div class="login"><input id="user" placeholder="Usuário"><input id="pass" type="password" placeholder="Senha"><button id="loginBtn" class="primary">Entrar</button></div><div id="adminPanel" class="hidden"></div></div></section>
   </main>
 
-  <aside id="cartDrawer" class="drawer">
-    <div class="drawer-head"><h2>Meu pedido</h2><button id="cartClose">Voltar</button></div>
-    <div id="cartItems"></div>
-    <div class="drawer-total"><span>Total</span><b id="cartTotal">R$0,00</b></div>
-    <button id="clearCart" class="ghost full">Limpar carrinho</button>
-    <a href="#checkout" id="goCheckout" class="primary full">Ir para pagamento</a>
-  </aside>
+  <aside id="cartDrawer" class="drawer"><div class="drawerHead"><h2>Meu pedido</h2><button id="cartClose" class="ghost">Voltar</button></div><div id="cartItems"></div><div class="drawerTotal"><span>Total</span><b id="cartTotal">R$0,00</b></div><button id="clearCart" class="ghost full">Limpar carrinho</button><a id="goCheckout" href="#checkout" class="primary full">Ir para pagamento</a></aside>
   <div id="overlay" class="overlay"></div>
   <script src="assets/app.js"></script>
 </body>
