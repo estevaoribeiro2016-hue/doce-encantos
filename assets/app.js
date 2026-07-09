@@ -6,7 +6,7 @@ const BASE_PRODUCTS=[
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,min:8,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,min:8,desc:'Suave, cremosa e delicada.'}
 ];
-const STORE='de_v30_';
+const STORE='de_v32_';
 let inventory=JSON.parse(localStorage.getItem(STORE+'inventory')||'null')||BASE_PRODUCTS.map(p=>({id:p.id,stock:p.stock,min:p.min}));
 let products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));
 let cart=JSON.parse(localStorage.getItem(STORE+'cart')||'[]');
@@ -86,12 +86,33 @@ function renderCart(){
 }
 function aiAnswer(q){q=q.toLowerCase();if(/menos doce|não.*doce|nao.*doce|enjoativo/.test(q))return '💛 Eu recomendo a trufa de Maracujá. O recheio cítrico equilibra muito bem o chocolate e deixa o sabor menos enjoativo. Se quiser algo mais suave, Coco também é uma ótima escolha.';if(/promo|3|14/.test(q))return '🎉 A promoção é 3 trufas por R$14. Você pode escolher Brigadeiro, Oreo, Maracujá e Coco, repetindo sabores se quiser. Exemplo: 3 Maracujá ou 2 Oreo + 1 Coco.';if(/estoque|tem hoje|sabores/.test(q))return 'Hoje temos: '+products.map(p=>`${p.emoji} ${p.name}: ${p.stock>0?p.stock+' disponíveis':'indisponível'}`).join(', ')+'.';if(/20|vinte/.test(q))return 'Com R$20 eu aproveitaria a promoção de 3 por R$14. Minha sugestão: Maracujá, Oreo e Brigadeiro.';if(/presente|namorada|esposa|anivers/.test(q))return '🎁 Para presente eu montaria uma caixa com Brigadeiro, Oreo, Maracujá e Coco. Fica bonita, variada e agrada vários gostos.';if(/cart|dinheiro|pix|pagamento/.test(q))return 'Para retirada aceitamos Pix, dinheiro ou cartão. Para entrega, somente Pix.';return 'Me conta seu gosto: você prefere mais chocolate, mais docinha, mais suave ou mais equilibrada? Eu monto uma sugestão para você. 🍫'}
 function addChat(t,who='bot'){$('#chatLog').innerHTML+=`<div class="msg ${who}">${t}</div>`;$('#chatLog').scrollTop=$('#chatLog').scrollHeight;}
+
+function onlyDigits(v){return (v||'').replace(/\D/g,'')}
+function maskCep(v){v=onlyDigits(v).slice(0,8);return v.length>5?v.slice(0,5)+'-'+v.slice(5):v}
+async function lookupCep(){
+ const cepEl=$('#cep'); if(!cepEl)return;
+ const status=$('#cepStatus'); const raw=onlyDigits(cepEl.value);
+ cepEl.value=maskCep(cepEl.value);
+ if(raw.length<8){ if(status){status.textContent='Digite o CEP para preencher a rua automaticamente.';status.className='cepStatus'} return; }
+ if(status){status.textContent='Buscando endereço pelo CEP...';status.className='cepStatus loading'}
+ try{
+  const res=await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+  const data=await res.json();
+  if(data.erro){ if(status){status.textContent='CEP não encontrado. Verifique e tente novamente.';status.className='cepStatus error'} return; }
+  if($('#rua')) $('#rua').value=data.logradouro||'';
+  if($('#bairro')) $('#bairro').value=data.bairro||'';
+  if($('#cidade')) $('#cidade').value=data.localidade||'';
+  if($('#estado')) $('#estado').value=data.uf||'';
+  if(status){status.textContent='Endereço preenchido automaticamente. Complete apenas o número.';status.className='cepStatus ok'}
+  $('#numero')?.focus();
+ }catch(e){ if(status){status.textContent='Não foi possível consultar o CEP agora. Você pode preencher manualmente.';status.className='cepStatus error'} }
+}
 function finish(){
  if(!cart.length)return alert('Carrinho vazio.'); let f=$('[name=fulfillment]:checked').value, pay=$('#payment').value;
- if(f==='entrega'){if(calc()<30)return alert('Entrega somente acima de R$30.'); if(!cep.value||!rua.value||!numero.value||!bairro.value)return alert('Informe CEP, rua, número e bairro.'); if(pay!=='pix')return alert('Para entrega, somente Pix.');}
+ if(f==='entrega'){if(calc()<30)return alert('Entrega somente acima de R$30.'); if(!cep.value||!rua.value||!numero.value||!bairro.value||!cidade.value||!estado.value)return alert('Informe CEP, rua, número, bairro, cidade e UF.'); if(pay!=='pix')return alert('Para entrega, somente Pix.');}
  let order={id:Date.now().toString().slice(-6),items:cart,total:calc(),fulfillment:f,payment:pay,status:'Recebido',created:new Date().toLocaleString('pt-BR')};
  order.items.forEach(i=>{if(i.flavors){i.flavors.forEach(f=>{let p=productById(f.id);p.stock=Math.max(0,p.stock-1)})}else{let p=productById(i.id);p.stock=Math.max(0,p.stock-i.qty)}});
- orders.unshift(order); const msg=`🍫 *Novo pedido Doce Encanto*\n\n🧾 Pedido #${order.id}\n${cart.map(i=>`• ${i.qty}x ${i.name}${i.flavors?' ('+i.flavors.map(f=>f.name).join(', ')+')':''}`).join('\n')}\n\n💰 Total: ${BRL(calc())}\n📦 ${f}\n💳 ${pay}\n${f==='retirada'?'📍 Retirada: Rua Aletes, 78, Pindorama, 30865-180.':`🏠 Entrega: ${rua.value}, ${numero.value}, ${bairro.value}, CEP ${cep.value}`}\n\nObrigada pelo pedido 💖`;
+ orders.unshift(order); const msg=`🍫 *Novo pedido Doce Encanto*\n\n🧾 Pedido #${order.id}\n${cart.map(i=>`• ${i.qty}x ${i.name}${i.flavors?' ('+i.flavors.map(f=>f.name).join(', ')+')':''}`).join('\n')}\n\n💰 Total: ${BRL(calc())}\n📦 ${f}\n💳 ${pay}\n${f==='retirada'?'📍 Retirada: Rua Aletes, 78, Pindorama, 30865-180.':`🏠 Entrega: ${rua.value}, ${numero.value}, ${bairro.value}, ${cidade.value}/${estado.value}, CEP ${cep.value}`}\n\nObrigada pelo pedido 💖`;
  cart=[]; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! A Trufita está comemorando 🎉'); window.open('https://wa.me/5531992180872?text='+encodeURIComponent(msg),'_blank');
 }
 function stockStatus(p){if(p.stock<=0)return ['Sem estoque','danger','Produzir hoje']; if(p.stock<=p.min)return ['Atenção','warn','Repor em breve']; return ['OK','ok','Estoque saudável'];}
@@ -110,4 +131,4 @@ function renderAdmin(){
 async function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if(ADMIN_USERS[u]&&p==='30707420'){const ok=await requireFaceId(u); if(!ok)return; currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}
 renderProducts();renderPromo();renderCart();addChat('Oii! Eu sou a Trufita AI 💖. Posso indicar sabores, explicar promoções e consultar o estoque para você.');
 $('#cartOpen').onclick=()=>{$('#cartDrawer').classList.add('open');$('#overlay').classList.add('show')};$('#cartClose').onclick=$('#overlay').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};$('#clearCart').onclick=()=>{cart=[];save();renderCart();say('Carrinho limpo. Posso te ajudar a montar uma nova promoção 😊')};$('#goCheckout').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};
-$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Apontei o QR Code para você 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'};if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Apontei o QR Code para você 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'}; if($('#cep')){$('#cep').addEventListener('input',()=>{$('#cep').value=maskCep($('#cep').value)});$('#cep').addEventListener('blur',lookupCep);$('#cep').addEventListener('change',lookupCep)};if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});

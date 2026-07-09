@@ -1,4 +1,4 @@
-# Doce Encanto V31 — Acessos Seguros
+# Doce Encanto V32 — Acessos Seguros
 
 Versão focada em corrigir e organizar os acessos da Central da Empresa.
 
@@ -21,3 +21,10 @@ Versão focada em corrigir e organizar os acessos da Central da Empresa.
 ## Como publicar
 Extraia o ZIP, selecione todos os arquivos de dentro da pasta e envie para o GitHub em `Add file > Upload files`.
 A Vercel atualiza automaticamente.
+
+
+## V32
+- Checkout de entrega agora consulta CEP automaticamente via ViaCEP.
+- Ao informar o CEP, o sistema preenche rua, bairro, cidade e UF.
+- Cliente completa apenas o número da residência.
+- Se o CEP não for encontrado, o cliente pode preencher manualmente.
