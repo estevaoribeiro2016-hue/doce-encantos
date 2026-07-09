@@ -26,3 +26,12 @@
 #customerName,#customerPhone{margin-bottom:10px}
 @media(max-width:1100px){.checkoutGridV33{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.checkoutGridV33{grid-template-columns:1fr}}
+
+/* V39 — frete grátis acima de R$30 */
+.freeShip{margin-top:12px;border:1px solid var(--line);border-radius:18px;padding:12px;background:#fff7fb}
+.dark .freeShip{background:#351b26}
+.freeShip b{display:block;margin-bottom:6px;color:var(--pink)}
+.freeShip small{color:var(--muted);font-weight:800}
+.freeShip.unlocked{background:linear-gradient(135deg,#fff3bd,#ffe1f0);border-color:#f4c85a}
+.freeBar{height:12px;background:#f5d9e8;border-radius:999px;overflow:hidden;margin:8px 0}
+.freeBar i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--gold));border-radius:999px;transition:.3s}

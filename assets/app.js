@@ -6,9 +6,9 @@ const BASE_PRODUCTS=[
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,min:8,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,min:8,desc:'Suave, cremosa e delicada.'}
 ];
-const STORE='de_v38_';
+const STORE='de_v39_';
 const STORE_ADDRESS='Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
-let deliveryInfo={type:'retirada',fee:0,status:'Retirada na loja',method:'Retirada'};
+let deliveryInfo={type:'retirada',fee:0,status:'Retirada na loja',method:'Retirada',applied:false,region:''};
 const DELIVERY_MODE='Uber Moto';
 const DELIVERY_FEES={pindorama:5,filadelfia:5,gloria:6,coqueiros:6};
 const DEFAULT_DELIVERY_FEE=10;
@@ -88,14 +88,21 @@ function addItem(id,btn){let p=productById(id); if(p.stock<=0)return say(`${p.na
 function deliveryFee(){
  const f=$('[name=fulfillment]:checked')?.value||'retirada';
  if(f!=='entrega') return 0;
- if(calc()<30) return 0;
- if(deliveryInfo && typeof deliveryInfo.fee==='number') return deliveryInfo.fee;
+ if(calc()>=30) return 0;
+ if(deliveryInfo && deliveryInfo.applied && typeof deliveryInfo.fee==='number') return deliveryInfo.fee;
  return 0;
+}
+function freeShippingProgress(){
+ const sub=calc();
+ const missing=Math.max(0,30-sub);
+ const pct=Math.min(100,(sub/30)*100);
+ if(sub>=30) return `<div class="freeShip unlocked"><b>🎉 Frete grátis desbloqueado!</b><small>Seu pedido passou de R$30,00.</small></div>`;
+ return `<div class="freeShip"><b>🎁 Frete grátis acima de R$30,00</b><div class="freeBar"><i style="width:${pct}%"></i></div><small>Faltam ${BRL(missing)} para ganhar frete grátis.</small></div>`;
 }
 function updateTotals(){
  const sub=calc(), fee=deliveryFee(), total=sub+fee;
  if($('#subtotal')) $('#subtotal').textContent=BRL(sub);
- if($('#frete')) $('#frete').textContent=$('[name=fulfillment]:checked')?.value==='entrega'&&sub<30?'Entrega só acima de R$30':BRL(fee);
+ if($('#frete')) $('#frete').textContent=$('[name=fulfillment]:checked')?.value==='entrega'&&sub>=30?'Grátis':BRL(fee);
  if($('#grandTotal')) $('#grandTotal').textContent=BRL(total);
  if($('#distanceLabel')) $('#distanceLabel').textContent=$('[name=fulfillment]:checked')?.value==='entrega' ? DELIVERY_MODE : 'Retirada';
  if($('#cartTotal')) $('#cartTotal').textContent=BRL(sub);
@@ -132,26 +139,26 @@ async function lookupCep(){
  }catch(e){ if(status){status.textContent='Não foi possível consultar o CEP agora. Você pode preencher manualmente.';status.className='cepStatus error'} }
 }
 function resetDeliveryQuote(){
- deliveryInfo={type:$('[name=fulfillment]:checked')?.value||'retirada',fee:0,status:'Informe o endereço e aplique o frete por bairro',method:$('[name=fulfillment]:checked')?.value==='entrega'?DELIVERY_MODE:'Retirada'};
+ deliveryInfo={type:$('[name=fulfillment]:checked')?.value||'retirada',fee:0,status:'Informe o endereço e aplique o frete por bairro',method:$('[name=fulfillment]:checked')?.value==='entrega'?DELIVERY_MODE:'Retirada',applied:false,region:''};
  const box=$('#deliveryQuote'); if(box){box.classList.add('hidden'); box.innerHTML=''}
  updateTotals();
 }
 function deliveryAddressText(){return `${$('#rua')?.value||''}, ${$('#numero')?.value||''}, ${$('#bairro')?.value||''}, ${$('#cidade')?.value||''}/${$('#estado')?.value||''}, CEP ${$('#cep')?.value||''}`.replace(/\s+/g,' ').trim()}
 function calculateDeliveryDistance(){
  if($('[name=fulfillment]:checked')?.value!=='entrega') return;
- if(calc()<30) return alert('Entrega disponível somente a partir de R$30,00.');
  const required=['cep','rua','numero','bairro','cidade','estado'];
  for(const id of required){if(!$('#'+id)?.value.trim()) return alert('Preencha CEP, rua, número, bairro, cidade e UF para aplicar o frete.')}
  const bairro=$('#bairro').value.trim();
- const fee=deliveryFeeByRegion(bairro);
+ const baseFee=deliveryFeeByRegion(bairro);
  const region=deliveryFeeLabel(bairro);
- deliveryInfo={type:'entrega',fee,status:'Frete por bairro aplicado',method:DELIVERY_MODE,bairro,region};
+ const fee=calc()>=30?0:baseFee;
+ deliveryInfo={type:'entrega',fee,status:fee===0?'Frete grátis aplicado':'Frete por bairro aplicado',method:DELIVERY_MODE,bairro,region,applied:true,baseFee};
  const box=$('#deliveryQuote');
  if(box){
   box.classList.remove('hidden');
-  box.innerHTML=`<b>🛵 Entrega por ${DELIVERY_MODE}</b><br><b>📍 Bairro: ${bairro}</b><br><b>🚚 Frete: ${BRL(fee)}</b><br><small>${region}. Não usamos mais cálculo de distância para evitar divergências.</small>`;
+  box.innerHTML=`<b>🛵 Entrega por ${DELIVERY_MODE}</b><br><b>📍 Bairro: ${bairro}</b><br><b>🚚 Frete: ${fee===0?'🎉 GRÁTIS':BRL(fee)}</b><br><small>${fee===0?'Pedido acima de R$30,00.':region+'. Não usamos mais cálculo de distância para evitar divergências.'}</small>${freeShippingProgress()}`;
  }
- say(`Frete aplicado para ${bairro}: ${BRL(fee)} via ${DELIVERY_MODE}. 💖`);
+ say(fee===0?`Parabéns! Você desbloqueou frete grátis para ${bairro} via ${DELIVERY_MODE}. 🎉`:`Frete aplicado para ${bairro}: ${BRL(fee)} via ${DELIVERY_MODE}. 💖`);
  updateTotals();
 }
 function orderItemsText(items){
@@ -165,10 +172,9 @@ function finish(){
  if(!customerName) return alert('Informe o nome do cliente.');
  if(!customerPhone) return alert('Informe o telefone/WhatsApp do cliente.');
  if(f==='entrega'){
-   if(calc()<30)return alert('Entrega somente acima de R$30.');
    if(!$('#cep').value||!$('#rua').value||!$('#numero').value||!$('#bairro').value||!$('#cidade').value||!$('#estado').value)return alert('Informe CEP, rua, número, bairro, cidade e UF.');
    if(pay!=='pix')return alert('Para entrega, somente Pix.');
-   if(!deliveryInfo.fee){return alert('Aplique o frete por bairro antes de finalizar a entrega.');}
+   if(!deliveryInfo.applied){return alert('Aplique o frete por bairro antes de finalizar a entrega.');}
  }
  const id='DE'+Date.now().toString().slice(-6);
  const sub=calc(), fee=f==='entrega'?deliveryFee():0, total=sub+fee;
@@ -191,7 +197,7 @@ ${orderItemsText(cart)}
 ━━━━━━━━━━━━━━
 💵 *Resumo*
 Subtotal: ${BRL(sub)}
-Frete: ${BRL(fee)}
+Frete: ${fee===0&&f==='entrega'?'🎉 GRÁTIS':BRL(fee)}
 Total: *${BRL(total)}*
 
 ━━━━━━━━━━━━━━
@@ -201,7 +207,7 @@ Modalidade: ${DELIVERY_MODE}
 Endereço: ${deliveryAddressText()}
 Bairro: ${$('#bairro')?.value||''}
 Região: ${deliveryInfo.region||'Demais bairros'}
-Frete aplicado: ${BRL(fee)}`}
+Frete aplicado: ${fee===0?'🎉 GRÁTIS — pedido acima de R$30,00':BRL(fee)}`}
 
 ━━━━━━━━━━━━━━
 💳 *Pagamento*
@@ -213,7 +219,7 @@ Comprovante: ${pay==='pix'?'Aguardando envio/confirmação':'Não necessário ag
 Status: Recebido
 
 ✅ Pedido enviado pelo site da Doce Encanto.`;
- cart=[]; deliveryInfo={type:'retirada',fee:0,status:'Retirada na loja',method:'Retirada'}; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! A mensagem completa foi enviada para o WhatsApp 🎉'); window.open('https://wa.me/5531992180872?text='+encodeURIComponent(msg),'_blank');
+ cart=[]; deliveryInfo={type:'retirada',fee:0,status:'Retirada na loja',method:'Retirada',applied:false,region:''}; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! A mensagem completa foi enviada para o WhatsApp 🎉'); window.open('https://wa.me/5531992180872?text='+encodeURIComponent(msg),'_blank');
 }
 function stockStatus(p){if(p.stock<=0)return ['Sem estoque','danger','Produzir hoje']; if(p.stock<=p.min)return ['Atenção','warn','Repor em breve']; return ['OK','ok','Estoque saudável'];}
 function renderAdmin(){
@@ -231,4 +237,4 @@ function renderAdmin(){
 async function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if(ADMIN_USERS[u]&&p==='30707420'){const ok=await requireFaceId(u); if(!ok)return; currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}
 renderProducts();renderPromo();renderCart();addChat('Oii! Eu sou a Trufita AI 💖. Posso indicar sabores, explicar promoções e consultar o estoque para você.');
 $('#cartOpen').onclick=()=>{$('#cartDrawer').classList.add('open');$('#overlay').classList.add('show')};$('#cartClose').onclick=$('#overlay').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};$('#clearCart').onclick=()=>{cart=[];save();renderCart();say('Carrinho limpo. Posso te ajudar a montar uma nova promoção 😊')};$('#goCheckout').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};
-$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);resetDeliveryQuote();if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix e envio por Uber Moto. Informe o endereço para aplicar o frete por bairro 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'}; if($('#cep')){$('#cep').addEventListener('input',()=>{$('#cep').value=maskCep($('#cep').value);resetDeliveryQuote()});$('#cep').addEventListener('blur',lookupCep);$('#cep').addEventListener('change',lookupCep)};['rua','numero','bairro','cidade','estado'].forEach(id=>{$('#'+id)?.addEventListener('input',resetDeliveryQuote)});$('#calcDistance')?.addEventListener('click',calculateDeliveryDistance);if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);resetDeliveryQuote();if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix e envio por Uber Moto. Informe o endereço para aplicar o frete por bairro. Frete grátis acima de R$30 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'}; if($('#cep')){$('#cep').addEventListener('input',()=>{$('#cep').value=maskCep($('#cep').value);resetDeliveryQuote()});$('#cep').addEventListener('blur',lookupCep);$('#cep').addEventListener('change',lookupCep)};['rua','numero','bairro','cidade','estado'].forEach(id=>{$('#'+id)?.addEventListener('input',resetDeliveryQuote)});$('#calcDistance')?.addEventListener('click',calculateDeliveryDistance);if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});

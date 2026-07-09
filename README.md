@@ -1,17 +1,20 @@
-# Doce Encanto V38 — Frete por região + Uber Moto
+# Doce Encanto V39 — Frete grátis acima de R$30
 
-Versão focada em remover o cálculo de distância e deixar o frete simples, fixo e confiável.
+Nova versão baseada na V38, mantendo o frete por região e removendo a regra antiga de entrega somente acima de R$30.
 
-## Frete
-- Pindorama: R$ 5,00
-- Filadélfia: R$ 5,00
-- Glória: R$ 6,00
-- Coqueiros: R$ 6,00
-- Demais bairros: R$ 10,00
+## Frete por região
 
-## Entrega
-- Texto visível: entrega realizada por Uber Moto.
-- Mensagem do WhatsApp inclui modalidade Uber Moto, endereço, bairro, região e frete aplicado.
+- Pindorama e Filadélfia: R$5,00
+- Glória e Coqueiros: R$6,00
+- Demais bairros: R$10,00
+
+## Nova regra
+
+- Entrega via Uber Moto disponível normalmente.
+- Frete grátis para pedidos acima de R$30,00.
+- Checkout mostra quando falta para ganhar frete grátis.
+- WhatsApp informa quando o frete saiu grátis.
 
 ## Atualização
-Extraia o ZIP e envie todos os arquivos de dentro da pasta para a raiz do GitHub.
+
+Extraia o ZIP, entre na pasta e envie todos os arquivos de dentro para a raiz do GitHub.
