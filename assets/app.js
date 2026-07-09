@@ -12,6 +12,39 @@ let products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})
 let cart=JSON.parse(localStorage.getItem(STORE+'cart')||'[]');
 let orders=JSON.parse(localStorage.getItem(STORE+'orders')||'[]');
 let promo=[]; let currentAdmin=null;
+const ADMIN_USERS={
+  'teteu.trufa':{name:'Teteu',role:'Administrador',fullAccess:true},
+  'ingrid.trufa':{name:'Ingrid',role:'Administradora',fullAccess:true}
+};
+const faceKey=u=>STORE+'faceid_'+u;
+function hasFaceId(u){return localStorage.getItem(faceKey(u))==='enabled'}
+async function requireFaceId(u){
+  if(!hasFaceId(u)) return true;
+  if(window.PublicKeyCredential && navigator.credentials){
+    try{
+      await navigator.credentials.get({publicKey:{challenge:new Uint8Array([1,2,3,4,5,6,7,8]),timeout:60000,userVerification:'preferred'}});
+      return true;
+    }catch(e){
+      return confirm('Confirme o Face ID/Windows Hello para continuar. Se seu aparelho não abriu a biometria, clique em OK para confirmar manualmente.');
+    }
+  }
+  return confirm('Face ID/Windows Hello cadastrado. Confirmar acesso agora?');
+}
+async function registerFaceId(){
+  const u=($('#user')?.value||currentAdmin||'').trim();
+  const p=($('#pass')?.value||'').trim();
+  if(!ADMIN_USERS[u]) return alert('Digite primeiro um usuário autorizado.');
+  if(!currentAdmin && p!=='30707420') return alert('Para cadastrar Face ID, primeiro informe usuário e senha corretos.');
+  if(window.PublicKeyCredential && navigator.credentials){
+    try{
+      await navigator.credentials.create({publicKey:{challenge:new Uint8Array([8,7,6,5,4,3,2,1]),rp:{name:'Doce Encanto'},user:{id:new TextEncoder().encode(u),name:u,displayName:ADMIN_USERS[u].name},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{userVerification:'preferred'},timeout:60000}});
+    }catch(e){
+      if(!confirm('Seu navegador não concluiu o Face ID/Windows Hello. Deseja deixar o acesso biométrico marcado neste aparelho mesmo assim?')) return;
+    }
+  }
+  localStorage.setItem(faceKey(u),'enabled');
+  alert('Face ID/Windows Hello cadastrado para este usuário neste aparelho. A senha continuará sendo exigida primeiro.');
+}
 const productById=id=>products.find(p=>p.id===id);
 const cartQty=id=>cart.reduce((a,i)=>a+(i.id===id?i.qty:0)+(i.flavors?i.flavors.filter(f=>f.id===id).length:0),0);
 const calc=()=>cart.reduce((a,i)=>a+i.price*i.qty,0);
@@ -74,7 +107,7 @@ function renderAdmin(){
  $('#adminBack').onclick=()=>location.hash='home'; $('#saveStock').onclick=()=>{$$('[data-stock]').forEach(inp=>{let p=productById(inp.dataset.stock);p.stock=Math.max(0,Number(inp.value)||0)});$$('[data-min]').forEach(inp=>{let p=productById(inp.dataset.min);p.min=Math.max(1,Number(inp.value)||1)});save();syncProducts();jump('Estoque atualizado. O site já respeita os sabores disponíveis. ✅')};
  $$('[data-status]').forEach(sel=>sel.onchange=()=>{let o=orders.find(x=>x.id===sel.dataset.status);o.status=sel.value;save();renderAdmin()});
 }
-function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if((u==='teteu.trufa'||u==='ingrid.trufa')&&p==='30707420'){currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}
+async function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if(ADMIN_USERS[u]&&p==='30707420'){const ok=await requireFaceId(u); if(!ok)return; currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}
 renderProducts();renderPromo();renderCart();addChat('Oii! Eu sou a Trufita AI 💖. Posso indicar sabores, explicar promoções e consultar o estoque para você.');
 $('#cartOpen').onclick=()=>{$('#cartDrawer').classList.add('open');$('#overlay').classList.add('show')};$('#cartClose').onclick=$('#overlay').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};$('#clearCart').onclick=()=>{cart=[];save();renderCart();say('Carrinho limpo. Posso te ajudar a montar uma nova promoção 😊')};$('#goCheckout').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};
-$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Apontei o QR Code para você 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin;$('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'};if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Apontei o QR Code para você 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'};if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});

@@ -1,11 +1,15 @@
-# Doce Encanto V30 — Empresa Inteligente
+# Doce Encanto V31 — Acessos Seguros
 
-Versão focada em melhorar a área da empresa sem exagero.
+Versão focada em corrigir e organizar os acessos da Central da Empresa.
 
 ## Principais ajustes
 - Pix com QR Code real em destaque.
-- Área da empresa mais funcional para Teteu e Ingrid.
-- Login: `teteu.trufa` / `30707420` e `ingrid.trufa` / `30707420`.
+- Área da empresa mais funcional e segura.
+- Login Teteu: `teteu.trufa` / `30707420`.
+- Login Ingrid: `ingrid.trufa` / `30707420`.
+- Ingrid tem o mesmo acesso total que Teteu.
+- O login sempre exige senha primeiro.
+- Face ID/Windows Hello pode ser cadastrado depois de informar usuário autorizado e senha.
 - Dashboard com vendas, pedidos, estoque total e alertas.
 - Estoque inteligente por sabor, com mínimo configurável.
 - Quando o estoque fica zerado, o sabor fica indisponível no site.
