@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const BRL=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const products=[
  {id:'brigadeiro',name:'Brigadeiro',emoji:'🍫',price:5,stock:20,desc:'Clássica, cremosa e intensa. Perfeita para quem ama chocolate.'},
- {id:'oreo',name:'Oreo',emoji:'🍪',price:5,stock:20,desc:'Mais docinha, com biscoito preto e recheio branco crocante.'},
+ {id:'oreo',name:'Oreo',emoji:'🖤',price:5,stock:20,desc:'Mais docinha, com biscoito preto e recheio branco crocante.'},
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,desc:'Suave, cremosa e delicada.'}
 ];
