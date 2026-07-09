@@ -1,20 +1,23 @@
-# Doce Encanto V19 completa
+# Doce Encanto V21
 
-Versão estática avançada para Vercel/GitHub.
+Versão com foco no checkout completo e correções do carrinho.
 
-Inclui:
-- Mascote Encantina com animações no site
-- Encantina AI local com sugestões
-- Loja moderna com carrinho lateral
-- Promoção 3 trufas por R$14 com sabores repetidos
-- PIX com QR Code + copia e cola
-- Área do cliente
-- Área da empresa com login
-- Estoque, produção, financeiro e relatórios em localStorage
-- PWA com manifest e service worker
+## Novidades
 
-Acesso empresa:
-- usuário: teteu.trufa / senha: 30707420
-- usuário: ingrid.trufa / senha: 30707420
+- Correção do botão de adicionar trufa unitária ao carrinho.
+- Animação da trufa voando até o carrinho ao adicionar.
+- Carrinho lateral com botão de ir para pagamento.
+- Checkout separado e mais completo.
+- Escolha entre retirada e entrega.
+- Retirada mostra o endereço da loja: Rua Aletes, 78, Pindorama, 30865-180.
+- Entrega exige CEP, rua, número e bairro.
+- Entrega só permite Pix.
+- Dinheiro/cartão ficam disponíveis apenas para retirada.
+- Pix com QR Code e botão Pix copia e cola.
+- Scanner Pix simulado: cliente envia comprovante e a Encantina confirma o pagamento.
+- Modo claro e modo escuro.
+- Área da empresa com botão voltar ao início.
 
-Observação: dados ficam no navegador (localStorage). Para tempo real entre dispositivos, próxima etapa precisa de Supabase/Firebase.
+## Como atualizar
+
+Extraia o ZIP, selecione todos os arquivos de dentro da pasta e envie para o GitHub na raiz do repositório.
