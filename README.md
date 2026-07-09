@@ -1,18 +1,8 @@
-# Doce Encanto V27 - Promoção Interativa
+# Doce Encanto V29 corrigida
 
-Versão focada em deixar a promoção 3 trufas por R$14 mais viva e divertida.
+Alterações desta versão:
+- Oreo agora usa o ícone 🖤 em todos os lugares gerados pelo sistema.
+- Pix agora exibe a imagem real do QR Code em assets/pix-qrcode.png.
+- CSS e JS com cache busting v=29 para evitar navegador mostrar versão antiga.
 
-## Novidades
-- Promoção em formato de jogo: escolha 3 trufas.
-- Permite sabores repetidos.
-- Barra de progresso 0/3, 1/3, 2/3 e 3/3.
-- Slots visuais mostrando as trufas escolhidas.
-- Botão “Quero sugestão da Trufita”.
-- Trufita orienta a escolha e comemora quando completa.
-- Confetes ao desbloquear a promoção.
-- Animação da trufa voando até o carrinho.
-- Carrinho com pop ao receber item.
-- Mantém checkout, Pix, WhatsApp, modo claro/escuro e central.
-
-## Como atualizar
-Extraia o ZIP, selecione tudo de dentro da pasta e envie para o GitHub na raiz do repositório.
+Como atualizar: envie todos os arquivos desta pasta para a raiz do GitHub.
