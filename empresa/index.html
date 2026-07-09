@@ -1,99 +1,13 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Central da Empresa | Doce Encanto</title>
-  <link rel="stylesheet" href="../assets/style.css" />
-</head>
-<body>
-  <main class="login-shell">
-    <section class="login-box" id="loginBox">
-      <a class="mini-link" href="../">← Voltar ao site</a>
-      <h1>Central da Empresa</h1>
-      <p class="muted">Acesse com seu usuário da Doce Encanto.</p>
-      <input id="user" placeholder="Usuário: teteu.trufa ou ingrid.trufa" autocomplete="username" />
-      <input id="pass" type="password" placeholder="Senha" autocomplete="current-password" />
-      <button class="btn primary full" id="loginBtn">Entrar</button>
-      <button class="btn secondary full" id="faceBtn">Entrar com Face ID</button>
-      <p class="face-note">Face ID funciona quando o navegador/dispositivo permitir. Se não aparecer, use a senha.</p>
-      <p id="loginMsg" class="muted"></p>
-    </section>
-
-    <section class="panel-shell" id="panel" hidden>
-      <div class="panel-top">
-        <div>
-          <a class="mini-link" href="../">← Site</a>
-          <h1>📦 Pedidos em tempo real</h1>
-          <p class="muted">Pedidos feitos neste site aparecem aqui automaticamente no mesmo domínio.</p>
-        </div>
-        <div>
-          <button class="btn secondary" id="notifyBtn">Ativar avisos</button>
-          <button class="btn primary" id="logoutBtn">Sair</button>
-        </div>
-      </div>
-      <div class="ai-feed" id="aiFeed">🤖 Encantina AI: aguardando novas demandas...</div>
-      <div class="orders-grid" id="orders"></div>
-    </section>
-  </main>
-
-  <script>
-    const USERS = { 'teteu.trufa':'30707420', 'ingrid.trufa':'30707420' };
-    const $ = s => document.querySelector(s);
-    const money = n => Number(n || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    let lastSeen = localStorage.getItem('doce_last_seen_order') || '';
-    function showPanel(){ $('#loginBox').hidden = true; $('#panel').hidden = false; renderOrders(); }
-    function login(){
-      const u = $('#user').value.trim(); const p = $('#pass').value.trim();
-      if(USERS[u] === p){ localStorage.setItem('doce_admin_user', u); showPanel(); }
-      else $('#loginMsg').textContent = 'Usuário ou senha incorretos.';
-    }
-    async function faceLogin(){
-      const u = $('#user').value.trim();
-      if(!USERS[u]){ $('#loginMsg').textContent = 'Digite primeiro um usuário válido.'; return; }
-      if(!window.PublicKeyCredential){ $('#loginMsg').textContent = 'Face ID não está disponível neste navegador. Use a senha.'; return; }
-      try{
-        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        if(!available){ $('#loginMsg').textContent = 'Este dispositivo não liberou Face ID. Use a senha.'; return; }
-        $('#loginMsg').textContent = 'Confirme no Face ID/Windows Hello...';
-        // Modo estático: usa autenticação local do dispositivo como confirmação visual.
-        localStorage.setItem('doce_admin_user', u); showPanel();
-      }catch(e){ $('#loginMsg').textContent = 'Não foi possível usar Face ID. Use a senha.'; }
-    }
-    function getOrders(){ return JSON.parse(localStorage.getItem('doce_orders_v16') || '[]'); }
-    function saveOrders(orders){ localStorage.setItem('doce_orders_v16', JSON.stringify(orders)); }
-    function statusOrder(id,status){ const orders=getOrders(); const o=orders.find(x=>x.id===id); if(o)o.status=status; saveOrders(orders); renderOrders(); }
-    function whats(order){
-      const txt = `🍫 *Pedido ${order.id} - Doce Encanto*\nCliente: ${order.customer?.name || 'Cliente'}\nStatus: ${order.status}\nTotal: ${money(order.total)}\n\nItens:\n${order.items.map(i=>`• ${i.qty}x ${i.name}`).join('\n')}`;
-      window.open('https://wa.me/5531992180872?text='+encodeURIComponent(txt),'_blank');
-    }
-    function renderOrders(){
-      const orders = getOrders();
-      if(!orders.length){ $('#orders').innerHTML = '<div class="admin-empty">Nenhum pedido recebido ainda.</div>'; return; }
-      if(orders[0].id !== lastSeen){
-        lastSeen = orders[0].id; localStorage.setItem('doce_last_seen_order', lastSeen);
-        $('#aiFeed').textContent = `🤖 Encantina AI: nova demanda recebida! Pedido ${orders[0].id} de ${orders[0].customer?.name || 'Cliente'} no valor de ${money(orders[0].total)}.`;
-        if(Notification.permission === 'granted') new Notification('Novo pedido Doce Encanto', { body:`${orders[0].id} • ${money(orders[0].total)}` });
-      }
-      $('#orders').innerHTML = orders.map(o=>`<article class="order-card">
-        <div class="order-meta"><span class="tag">${o.id}</span><span class="tag">${o.status}</span><span class="tag">${money(o.total)}</span><span class="tag">${o.payment}</span></div>
-        <h3>${o.customer?.name || 'Cliente'} • ${o.customer?.phone || 'Sem telefone'}</h3>
-        <p>${o.items.map(i=>`${i.qty}x ${i.name}`).join('<br>')}</p>
-        ${o.customer?.note ? `<p><b>Obs:</b> ${o.customer.note}</p>` : ''}
-        <div class="status-actions">
-          <button onclick="statusOrder('${o.id}','Recebido')">Recebido</button>
-          <button onclick="statusOrder('${o.id}','Produção')">Produção</button>
-          <button onclick="statusOrder('${o.id}','Pronto')">Pronto</button>
-          <button onclick="statusOrder('${o.id}','Entregue')">Entregue</button>
-          <button onclick='whats(${JSON.stringify(o).replaceAll("'","&apos;")})'>WhatsApp</button>
-        </div>
-      </article>`).join('');
-    }
-    $('#loginBtn').onclick = login; $('#faceBtn').onclick = faceLogin;
-    $('#logoutBtn').onclick = ()=>{ localStorage.removeItem('doce_admin_user'); location.reload(); };
-    $('#notifyBtn').onclick = async()=>{ if('Notification' in window){ await Notification.requestPermission(); $('#notifyBtn').textContent = 'Avisos ativados'; } };
-    if(localStorage.getItem('doce_admin_user')) showPanel();
-    setInterval(()=>{ if(!$('#panel').hidden) renderOrders(); }, 2500);
-  </script>
-</body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Central da Empresa</title><link rel="stylesheet" href="/assets/style.css"></head><body>
+<div id="login" class="loginWrap"><div class="loginCard"><div class="brand"><img src="/assets/mascote.png"><span>Central Doce Encanto</span></div><p>Acesso restrito. Informe usuário e senha.</p><input id="user" class="input" placeholder="Usuário" autocomplete="username"><input id="pass" class="input" placeholder="Senha" type="password" autocomplete="current-password"><button class="btn" onclick="login()">Entrar</button><button class="btn ghost" style="width:100%;margin-top:10px" onclick="faceId()">Usar Face ID / Windows Hello</button><p id="msg" style="color:#c03;font-weight:800"></p></div></div>
+<div id="panel" class="panel" style="display:none"><aside class="side"><div class="brand"><img src="/assets/mascote.png"><span>Empresa</span></div><p style="opacity:.75">Central administrativa</p><button class="btn ghost" onclick="logout()">Sair</button></aside><main class="main"><h1 class="title">Demandas em tempo real</h1><div class="dashGrid"><div class="stat"><b>Pedidos</b><h2 id="nPedidos">0</h2></div><div class="stat"><b>Receita</b><h2 id="receita">R$ 0,00</h2></div><div class="stat"><b>Novos</b><h2 id="novos">0</h2></div></div><h2>Pedidos</h2><div id="orders"></div></main></div>
+<script>
+const allowed={'teteu.trufa':'30707420','ingrid.trufa':'30707420'};
+function login(){const u=document.getElementById('user').value.trim();const p=document.getElementById('pass').value.trim();if(allowed[u]===p){sessionStorage.setItem('de_admin','ok');showPanel()}else document.getElementById('msg').textContent='Usuário ou senha incorretos.'}
+async function faceId(){try{if(!window.PublicKeyCredential)throw new Error(); alert('Confirme sua identidade no dispositivo. Depois informe a senha na primeira entrada.');}catch(e){alert('Face ID/Windows Hello não disponível neste navegador. Use usuário e senha.')}}
+function logout(){sessionStorage.removeItem('de_admin');location.reload()}
+function showPanel(){document.getElementById('login').style.display='none';document.getElementById('panel').style.display='grid';render()}
+function render(){const orders=JSON.parse(localStorage.getItem('de_orders')||'[]');document.getElementById('nPedidos').textContent=orders.length;document.getElementById('novos').textContent=orders.filter(o=>o.status==='Recebido').length;document.getElementById('receita').textContent='R$ '+orders.reduce((s,o)=>s+o.total,0).toFixed(2).replace('.',',');document.getElementById('orders').innerHTML=orders.length?orders.map((o,idx)=>`<div class='order'><h2>${o.id}</h2><p>${o.created}</p><p>${o.items.map(i=>`${i.qty}x ${i.name}`).join('<br>')}</p><p><b>Total:</b> R$ ${o.total.toFixed(2).replace('.',',')}</p><select onchange='status(${idx},this.value)' class='input'><option ${o.status==='Recebido'?'selected':''}>Recebido</option><option ${o.status==='Produção'?'selected':''}>Produção</option><option ${o.status==='Pronto'?'selected':''}>Pronto</option><option ${o.status==='Entregue'?'selected':''}>Entregue</option></select></div>`).join(''):'<div class="promoBox">Nenhum pedido ainda.</div>'}
+function status(i,v){const orders=JSON.parse(localStorage.getItem('de_orders')||'[]');orders[i].status=v;localStorage.setItem('de_orders',JSON.stringify(orders));render()}
+if(sessionStorage.getItem('de_admin')==='ok')showPanel(); setInterval(()=>{if(sessionStorage.getItem('de_admin')==='ok')render()},3000);
+</script></body></html>

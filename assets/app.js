@@ -1,126 +1,34 @@
-const WHATSAPP = '5531992180872';
-const PIX_KEY = '(31) 99218-0872';
-const PIX_COPY = '00020101021126580014br.gov.bcb.pix0136cbbf4567-58fb-4bdf-9d2e-doceencanto5204000053039865802BR5925INGRID EMANUELLE DAMASCENO6009BELO HORIZONTE62140510DOCEENCANTO6304A1B2';
-const products = [
-  { id:'brigadeiro', name:'Trufa de Brigadeiro', flavor:'Brigadeiro', price:5, available:true, emoji:'🍫', desc:'Recheio cremoso de brigadeiro tradicional.' },
-  { id:'oreo', name:'Trufa de Oreo', flavor:'Oreo', price:5, available:true, emoji:'🖤', desc:'Creme de Oreo com cobertura de chocolate.' },
-  { id:'maracuja', name:'Trufa de Maracujá', flavor:'Maracujá', price:5, available:true, emoji:'💛', desc:'Maracujá cremoso com toque azedinho.' },
-  { id:'coco', name:'Trufa de Coco', flavor:'Coco', price:5, available:true, emoji:'🥥', desc:'Coco cremoso e chocolate na medida certa.' },
-  { id:'morango', name:'Trufa de Morango', flavor:'Morango', price:5, available:false, emoji:'🍓', desc:'Sabor visível, mas indisponível hoje.' },
-  { id:'uva', name:'Trufa de Uva', flavor:'Uva', price:5, available:false, emoji:'🍇', desc:'Sabor visível, mas indisponível hoje.' },
+const WHATSAPP='553192180872';
+const PIX_CODE='00020101021226930014br.gov.bcb.pix2571api-h.developer.btgpactual.com/v1/p/v2/77b89d65148f4b8aac9b0f44c2a5c3675204000053039865802BR5925INGRID EMANUELLE DAMASCENO6009SAO PAULO62070503***6304ABCD';
+const products=[
+ {id:'brigadeiro',name:'Trufa de Brigadeiro',price:5,status:'on',icon:'🍫',desc:'Clássica, cremosa e intensa.'},
+ {id:'oreo',name:'Trufa de Oreo',price:5,status:'on',icon:'⚫',desc:'Biscoito preto com recheio branco crocante.'},
+ {id:'maracuja',name:'Trufa de Maracujá',price:5,status:'on',icon:'🟡',desc:'Recheio tropical de maracujá.'},
+ {id:'coco',name:'Trufa de Coco',price:5,status:'on',icon:'🥥',desc:'Cremosa, leve e especial.'},
+ {id:'morango',name:'Trufa de Morango',price:5,status:'off',icon:'🍓',desc:'Visível, porém indisponível.'},
+ {id:'uva',name:'Trufa de Uva',price:5,status:'off',icon:'🍇',desc:'Visível, porém indisponível.'}
 ];
-let cart = JSON.parse(localStorage.getItem('doce_cart_v16') || '[]');
-let promo = { Brigadeiro:0, Oreo:0, Maracujá:0, Coco:0 };
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const money = n => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-function save(){ localStorage.setItem('doce_cart_v16', JSON.stringify(cart)); }
-function mascotSay(text, mood=''){
-  $('#mascotSpeech').textContent = text;
-  const m = $('#mascot');
-  m.classList.remove('jump','point','celebrate');
-  if(mood){ void m.offsetWidth; m.classList.add(mood); }
-}
-function renderProducts(){
-  $('#productGrid').innerHTML = products.map(p => `
-    <article class="product ${!p.available?'unavailable':''}">
-      <div class="emoji">${p.emoji}</div>
-      <h3>${p.name}</h3>
-      <p>${p.desc}</p>
-      <div class="price">${money(p.price)}</div>
-      <button class="btn ${p.available?'secondary':'primary'}" ${!p.available?'disabled':''} data-add="${p.id}">${p.available?'Adicionar ao carrinho':'Indisponível'}</button>
-    </article>
-  `).join('');
-}
-function addItem(product, qty=1, customName=null, price=null){
-  const id = customName ? `promo-${Date.now()}` : product.id;
-  if(customName){ cart.push({ id, name:customName, price, qty }); }
-  else {
-    const existing = cart.find(i=>i.id===product.id);
-    if(existing) existing.qty += qty;
-    else cart.push({ id:product.id, name:product.name, price:product.price, qty });
-  }
-  save(); renderCart(); mascotSay('Eba! Foi para o carrinho 💕','jump'); bumpCart();
-}
-function total(){ return cart.reduce((s,i)=>s+i.price*i.qty,0); }
-function renderCart(){
-  $('#cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
-  $('#cartTotal').textContent = money(total());
-  $('#cartItems').innerHTML = cart.length ? cart.map(i=>`
-    <div class="cart-line">
-      <div><strong>${i.name}</strong><br><small>${money(i.price)} cada</small></div>
-      <div class="qty"><button data-dec="${i.id}">−</button><b>${i.qty}</b><button data-inc="${i.id}">+</button></div>
-    </div>
-  `).join('') : '<p class="muted">Seu carrinho está vazio. Escolha suas trufas favoritas 💖</p>';
-}
-function flyToCart(fromBtn){
-  const tpl = $('#flyTpl').content.firstElementChild.cloneNode(true);
-  const start = fromBtn.getBoundingClientRect(); const target = $('#openCart').getBoundingClientRect();
-  tpl.style.left = `${start.left + start.width/2 - 29}px`; tpl.style.top = `${start.top + start.height/2 - 29}px`;
-  tpl.style.setProperty('--dx', `${target.left - start.left}px`); tpl.style.setProperty('--dy', `${target.top - start.top}px`);
-  document.body.appendChild(tpl); setTimeout(()=>tpl.remove(), 820);
-}
-function bumpCart(){ const c=$('#openCart'); c.animate([{transform:'scale(1)'},{transform:'scale(1.18)'},{transform:'scale(1)'}],{duration:320}); }
-function openCart(){ $('#cartDrawer').classList.add('open'); $('#cartDrawer').setAttribute('aria-hidden','false'); mascotSay('Confira seu pedido no carrinho 🛒'); }
-function closeCart(){ $('#cartDrawer').classList.remove('open'); $('#cartDrawer').setAttribute('aria-hidden','true'); }
-function selectedPay(){ return document.querySelector('input[name="pay"]:checked')?.value || 'Pix'; }
-function customer(){ return { name: $('#customerName')?.value.trim() || 'Cliente', phone: $('#customerPhone')?.value.trim() || 'Não informado', note: $('#customerNote')?.value.trim() || '' }; }
-function makeOrder(){
-  const c = customer();
-  const order = { id: `DE-${Date.now().toString().slice(-6)}`, createdAt: new Date().toISOString(), customer:c, items:cart, total:total(), payment:selectedPay(), status:'Recebido' };
-  const orders = JSON.parse(localStorage.getItem('doce_orders_v16') || '[]');
-  orders.unshift(order); localStorage.setItem('doce_orders_v16', JSON.stringify(orders));
-  localStorage.setItem('doce_last_order', JSON.stringify(order));
-  return order;
-}
-function buildMessage(order){
-  const lines = order.items.map(i=>`• ${i.qty}x ${i.name} — ${money(i.price*i.qty)}`).join('\n');
-  const pix = order.payment==='Pix' ? `\n💳 *PIX:* cliente vai pagar pelo QR Code / Pix copia e cola.\n🔑 Chave Pix: ${PIX_KEY}` : '';
-  return `🍫✨ *NOVO PEDIDO - DOCE ENCANTO* ✨🍫\n\n🧾 *Pedido:* ${order.id}\n👤 *Cliente:* ${order.customer.name}\n📱 *WhatsApp:* ${order.customer.phone}\n\n📦 *Itens:*\n${lines}\n\n💰 *Total:* ${money(order.total)}\n💳 *Pagamento:* ${order.payment}${pix}\n${order.customer.note?`\n📝 *Observação:* ${order.customer.note}\n`:''}\n📍 *Retirada:* Rua Aletes, 78, Pindorama — portão marrom.\n\n✅ Pedido registrado no site da Doce Encanto.\n💖 Mais que doce, é sentimento.`;
-}
-function finishWhats(){
-  if(!cart.length){ mascotSay('Escolha uma trufinha antes 💖','point'); openCart(); return; }
-  const order = makeOrder();
-  mascotSay('Pedido enviado! Uhuul 🎉','celebrate');
-  cart=[]; save(); renderCart();
-  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage(order))}`, '_blank');
-}
-function renderPromo(){
-  const count = Object.values(promo).reduce((a,b)=>a+b,0);
-  Object.entries(promo).forEach(([flavor,qty])=>{ const el = document.getElementById(`promo-${flavor}`); if(el) el.textContent = qty; });
-  const btn = $('#addPromo');
-  btn.disabled = count !== 3;
-  btn.textContent = count === 3 ? 'Adicionar promoção por R$ 14,00' : `Escolha ${3-count} trufa(s)`;
-}
-function promoLabel(){ return Object.entries(promo).filter(([,q])=>q>0).map(([f,q])=>`${q} ${f}`).join(' + '); }
-function setupPromo(){ renderPromo(); }
-document.addEventListener('click', e=>{
-  const add = e.target.closest('[data-add]');
-  if(add){ const p = products.find(x=>x.id===add.dataset.add); flyToCart(add); setTimeout(()=>addItem(p), 260); }
-  const pinc = e.target.closest('[data-promo-inc]');
-  if(pinc){ const totalPromo = Object.values(promo).reduce((a,b)=>a+b,0); if(totalPromo < 3){ promo[pinc.dataset.promoInc]++; renderPromo(); } else mascotSay('A promoção já tem 3 trufas 💕','point'); }
-  const pdec = e.target.closest('[data-promo-dec]');
-  if(pdec){ const f=pdec.dataset.promoDec; if(promo[f] > 0){ promo[f]--; renderPromo(); } }
-  if(e.target.closest('#addPromo')){ addItem({}, 1, `Promoção 3 trufas (${promoLabel()})`, 14); promo = { Brigadeiro:0, Oreo:0, Maracujá:0, Coco:0 }; renderPromo(); openCart(); }
-  if(e.target.closest('#openCart') || e.target.closest('#heroOrder')) openCart();
-  if(e.target.closest('#closeCart')) closeCart();
-  if(e.target.closest('#clearCart')){ cart=[]; save(); renderCart(); mascotSay('Carrinho limpinho! 🧹'); }
-  const inc=e.target.closest('[data-inc]'); if(inc){ const i=cart.find(x=>x.id===inc.dataset.inc); if(i)i.qty++; save(); renderCart(); }
-  const dec=e.target.closest('[data-dec]'); if(dec){ const i=cart.find(x=>x.id===dec.dataset.dec); if(i){ i.qty--; if(i.qty<=0) cart=cart.filter(x=>x.id!==i.id); } save(); renderCart(); }
-  if(e.target.closest('#goPayment')){
-    if(!cart.length){ mascotSay('Seu carrinho ainda está vazio 🛒','point'); return; }
-    const pay = selectedPay();
-    if(pay==='Pix'){ $('#paymentModal').classList.add('open'); closeCart(); mascotSay('Apontei para o Pix! 👉','point'); }
-    else finishWhats();
-  }
-  if(e.target.closest('#backToCart')){ $('#paymentModal').classList.remove('open'); openCart(); }
-  if(e.target.closest('#finishOrder')) finishWhats();
-  if(e.target.closest('#quickWhats')) finishWhats();
-  if(e.target.closest('#copyPix')){ navigator.clipboard?.writeText(PIX_COPY); $('#copyPix').textContent='Pix copiado ✅'; mascotSay('Pix copiado com sucesso! 💳','celebrate'); setTimeout(()=>$('#copyPix').textContent='Copiar Pix copia e cola',1800); }
-});
-window.addEventListener('mousemove', e=>{
-  const m=$('#mascot'); const x=(e.clientX/window.innerWidth-.5)*8; const y=(e.clientY/window.innerHeight-.5)*8;
-  m.style.transform = `translate(${x}px,${y}px)`;
-});
-renderProducts(); renderCart(); setupPromo();
-setInterval(()=>{ const frases=['Posso ajudar você a escolher? 💖','Brigadeiro, Oreo, Maracujá ou Coco?','A promoção 3 por R$14 está esperando ✨']; mascotSay(frases[Math.floor(Math.random()*frases.length)]); }, 9000);
+let cart=JSON.parse(localStorage.getItem('de_cart')||'[]');
+const $=s=>document.querySelector(s); const $$=s=>document.querySelectorAll(s);
+function save(){localStorage.setItem('de_cart',JSON.stringify(cart)); renderCart();}
+function toast(t){const el=$('#toast'); if(!el)return; el.textContent=t; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200)}
+function mascot(state){const m=$('#mascot'); if(!m)return; m.classList.remove('jump','point'); if(state)m.classList.add(state); setTimeout(()=>m.classList.remove('jump','point'),1400)}
+function flyToCart(icon,x,y){const f=document.createElement('div'); f.className='fly'; f.textContent=icon; f.style.left=x+'px'; f.style.top=y+'px'; document.body.appendChild(f); const c=$('#cartBtn').getBoundingClientRect(); requestAnimationFrame(()=>{f.style.left=(c.left+20)+'px';f.style.top=(c.top+10)+'px';f.style.transform='scale(.25) rotate(360deg)';f.style.opacity='.1'}); setTimeout(()=>f.remove(),850)}
+function add(id,ev){const p=products.find(x=>x.id===id); if(!p||p.status==='off')return; const item=cart.find(i=>i.id===id); if(item)item.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); if(ev)flyToCart(p.icon,ev.clientX,ev.clientY); mascot('jump'); toast('Adicionado ao carrinho 🍫'); save();}
+function remove(id){cart=cart.filter(i=>i.id!==id); save()}
+function changeQty(id,d){const item=cart.find(i=>i.id===id); if(!item)return; item.qty+=d; if(item.qty<=0)remove(id); else save();}
+function clearCart(){cart=[]; save(); toast('Carrinho limpo')}
+function total(){let q=cart.reduce((s,i)=>s+i.qty,0), regular=cart.reduce((s,i)=>s+i.qty*i.price,0); const promo=Math.floor(q/3)*14 + (q%3)*5; return Math.min(regular,promo)}
+function renderProducts(){const grid=$('#products'); if(!grid)return; grid.innerHTML=products.map(p=>`<div class="card ${p.status==='off'?'unavailable':''}"><div class="prodIcon">${p.icon}</div><h3>${p.name}</h3><p>${p.desc}</p><div class="price">R$ ${p.price.toFixed(2).replace('.',',')}</div>${p.status==='on'?`<button class="btn" onclick="add('${p.id}',event)">Adicionar</button>`:`<button class="btn ghost" disabled>Indisponível</button>`}</div>`).join('')}
+function renderPromo(){const box=$('#promoFlavors'); if(!box)return; box.innerHTML=products.filter(p=>p.status==='on').map(p=>`<div class="flavorControl"><b>${p.icon} ${p.name.replace('Trufa de ','')}</b><div class="qty"><button onclick="promoQty('${p.id}',-1)">-</button><span id="promo-${p.id}">0</span><button onclick="promoQty('${p.id}',1)">+</button></div></div>`).join('')}
+let promo={brigadeiro:0,oreo:0,maracuja:0,coco:0};
+function promoQty(id,d){const sum=Object.values(promo).reduce((a,b)=>a+b,0); if(d>0&&sum>=3)return toast('A promoção tem 3 trufas.'); promo[id]=Math.max(0,promo[id]+d); $(`#promo-${id}`).textContent=promo[id]; $('#promoTotal').textContent=Object.values(promo).reduce((a,b)=>a+b,0)}
+function addPromo(){if(Object.values(promo).reduce((a,b)=>a+b,0)!==3)return toast('Escolha exatamente 3 trufas.'); Object.entries(promo).forEach(([id,q])=>{for(let i=0;i<q;i++) add(id)}); promo={brigadeiro:0,oreo:0,maracuja:0,coco:0}; renderPromo(); $('#promoTotal').textContent='0'; toast('Promoção adicionada: 3 por R$14 🎉')}
+function renderCart(){const q=cart.reduce((s,i)=>s+i.qty,0); $$('#cartCount').forEach(e=>e.textContent=q); const list=$('#cartList'); if(!list)return; list.innerHTML=cart.length?cart.map(i=>`<div class="cartItem"><div><b>${i.name}</b><br><small>R$ ${i.price.toFixed(2).replace('.',',')} cada</small></div><div><button onclick="changeQty('${i.id}',-1)">−</button> <b>${i.qty}</b> <button onclick="changeQty('${i.id}',1)">+</button><br><button onclick="remove('${i.id}')">remover</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>'; $('#cartTotal').textContent='R$ '+total().toFixed(2).replace('.',',')}
+function openCart(){ $('#drawer').classList.add('open'); $('#overlay').classList.add('show'); renderCart()}
+function closeCart(){ $('#drawer').classList.remove('open'); $('#overlay').classList.remove('show')}
+function showPay(){ if(!cart.length)return toast('Adicione produtos primeiro.'); $('#payment').style.display='block'; mascot('point'); setTimeout(()=>$('#payment').scrollIntoView({behavior:'smooth'}),100)}
+function copyPix(){navigator.clipboard?.writeText(PIX_CODE); toast('Pix copia e cola copiado!')}
+function finishOrder(){if(!cart.length)return toast('Carrinho vazio.'); const id='DE'+Date.now().toString().slice(-6); const pedido={id,items:cart,total:total(),status:'Recebido',created:new Date().toLocaleString('pt-BR')}; const orders=JSON.parse(localStorage.getItem('de_orders')||'[]'); orders.unshift(pedido); localStorage.setItem('de_orders',JSON.stringify(orders)); const itens=cart.map(i=>`• ${i.qty}x ${i.name}`).join('%0A'); const msg=`🍫 *NOVO PEDIDO - DOCE ENCANTO*%0A%0A🧾 *Pedido:* ${id}%0A${itens}%0A%0A💰 *Total:* R$ ${total().toFixed(2).replace('.',',')}%0A💳 *Pagamento:* Pix%0A📍 *Retirada:* Rua Aletes, 78 - Pindorama%0A%0A✨ Pedido finalizado pelo site da Doce Encanto.`; cart=[]; save(); mascot('jump'); window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank')}
+function contactWhats(){window.open(`https://wa.me/${WHATSAPP}`,'_blank')}
+document.addEventListener('DOMContentLoaded',()=>{renderProducts();renderPromo();renderCart();});
