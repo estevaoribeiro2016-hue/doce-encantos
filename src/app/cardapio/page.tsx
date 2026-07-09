@@ -1,2 +1,0 @@
-import { prisma } from '@/lib/prisma';import CardapioClient from './ui';
-export default async function Page(){const products=await prisma.product.findMany({include:{stocks:true},orderBy:{name:'asc'}});const promotions=await prisma.promotion.findMany({where:{active:true},include:{items:{include:{product:{include:{stocks:true}}}}}});return <CardapioClient products={products as any} promotions={promotions as any}/>}
