@@ -1,22 +1,117 @@
-
-const products=[{id:'brigadeiro',name:'Trufa de Brigadeiro',desc:'Chocolate cremoso com sabor clássico.',price:5,emoji:'🍫',available:true},{id:'oreo',name:'Trufa de Oreo',desc:'Recheio crocante e cremoso de Oreo.',price:5,emoji:'⚫',available:true},{id:'maracuja',name:'Trufa de Maracujá',desc:'Doce com toque azedinho equilibrado.',price:5,emoji:'💛',available:true},{id:'coco',name:'Trufa de Coco',desc:'Recheio macio de coco.',price:5,emoji:'🥥',available:true},{id:'morango',name:'Trufa de Morango',desc:'Visível no cardápio, mas indisponível hoje.',price:5,emoji:'🍓',available:false},{id:'uva',name:'Trufa de Uva',desc:'Visível no cardápio, mas indisponível hoje.',price:5,emoji:'🍇',available:false}];
-const CART_KEY='doce_cart_v14';
-let cart=JSON.parse(localStorage.getItem(CART_KEY)||'[]');
-const pixCode='00020101021126360014br.gov.bcb.pix0114+55319921808725204000053039865802BR5918INGRID E DAMASCENO6013BELO HORIZONT62070503***6304041C';
-const money=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const $=id=>document.getElementById(id);
-function totalItems(){return cart.reduce((s,i)=>s+i.qty,0)}
-function openCart(){const c=$('cart'); if(c)c.classList.add('open');}
-function closeCart(){const c=$('cart'); if(c)c.classList.remove('open');}
-function save(){localStorage.setItem(CART_KEY,JSON.stringify(cart));renderCart();}
-function setupPromos(){const opts=products.filter(p=>p.available).map(p=>`<option value="${p.id}">${p.name.replace('Trufa de ','')}</option>`).join('');['promoFlavor1','promoFlavor2','promoFlavor3'].forEach(id=>{const el=$(id); if(el)el.innerHTML=opts;});}
-function renderProducts(){const grid=$('productGrid'); if(!grid)return; grid.innerHTML=products.map(p=>`<article class="card ${p.available?'available':'unavailable'}"><span class="status ${p.available?'':'off'}">${p.available?'Disponível':'Indisponível'}</span><div class="product-emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.desc}</p><div class="price">${money(p.price)}</div><button class="btn primary" ${p.available?'':'disabled'} onclick="addProduct('${p.id}')">${p.available?'Adicionar':'Indisponível'}</button></article>`).join('');}
-function addProduct(id){const p=products.find(x=>x.id===id);if(!p||!p.available)return;const item=cart.find(i=>i.type==='single'&&i.id===id);if(item)item.qty++;else cart.push({type:'single',id:p.id,name:p.name,price:p.price,qty:1});save();openCart();animateMascot('happy');encantina(`Adicionei ${p.name} ao carrinho! 💖`)}
-function addPromo(){const ids=[$('promoFlavor1').value,$('promoFlavor2').value,$('promoFlavor3').value];const names=ids.map(id=>products.find(p=>p.id===id).name.replace('Trufa de ',''));cart.push({type:'promo',id:'promo-'+Date.now(),name:'Promoção 3 trufas',flavors:names,price:14,qty:1});save();openCart();animateMascot('celebrate');encantina('Promoção 3 por R$ 14 adicionada! ✨')}
-function changeQty(idx,delta){if(!cart[idx])return;cart[idx].qty+=delta;if(cart[idx].qty<=0)cart.splice(idx,1);save();}
-function clearCart(){cart=[];localStorage.removeItem(CART_KEY);localStorage.removeItem('doce_cart_v13');save();encantina('Carrinho limpo. Quando quiser, escolha novas trufas! 🍫');}
-function renderCart(){const el=$('cartItems');if(!el)return;if(!cart.length){el.innerHTML='<p>Seu carrinho está vazio.</p>';}else{el.innerHTML=cart.map((i,idx)=>`<div class="cart-item"><div><strong>${i.name}</strong><small>${i.type==='promo'?i.flavors.join(', '):money(i.price)}</small></div><div class="qty"><button type="button" onclick="changeQty(${idx},-1)">−</button><b>${i.qty}</b><button type="button" onclick="changeQty(${idx},1)">+</button></div></div>`).join('');}const total=cart.reduce((s,i)=>s+i.price*i.qty,0);$('cartTotal').textContent=money(total);const badge=$('cartBadge');if(badge)badge.textContent=totalItems();}
-function finishOrder(){if(!cart.length){alert('Adicione pelo menos um item ao carrinho.');return;}const payment='Pix';const lines=cart.map(i=>`• ${i.qty}x ${i.name}${i.type==='promo'?` (${i.flavors.join(', ')})`:''} - ${money(i.price*i.qty)}`).join('%0A');const total=money(cart.reduce((s,i)=>s+i.price*i.qty,0));let msg=`Olá, Doce Encanto! Quero fazer um pedido:%0A%0A${lines}%0A%0ATotal: ${total}%0AForma de pagamento: ${payment}%0A%0APix copia e cola:%0A${pixCode}`;msg+='%0A%0ARetirada: Rua Aletes, 78, Pindorama — portão marrom.';localStorage.setItem('ultimo_pedido_doce',JSON.stringify({date:new Date().toLocaleString('pt-BR'),items:cart,total,payment,status:'Recebido'}));animateMascot('celebrate');window.open(`https://wa.me/553192180872?text=${msg}`,'_blank');}
-function animateMascot(mode){const m=document.querySelector('.mascot-card');if(!m)return;m.classList.remove('happy','celebrate','point-pix');void m.offsetWidth;m.classList.add(mode);setTimeout(()=>m.classList.remove(mode),1700)}
-function encantina(text){const body=$('aiBody');if(body){body.innerHTML+=`<p><b>🍫 Encantina:</b> ${text}</p>`;body.scrollTop=body.scrollHeight;$('aiChat').style.display='block';}}
-document.addEventListener('DOMContentLoaded',()=>{setupPromos();renderProducts();renderCart();$('addPromo').onclick=addPromo;$('clearCart').onclick=clearCart;$('finishOrder').onclick=finishOrder;$('openCart').onclick=openCart;$('closeCart').onclick=closeCart;$('copyPix').onclick=()=>navigator.clipboard.writeText(pixCode).then(()=>alert('Pix copia e cola copiado!'));$('aiButton').onclick=()=>$('aiChat').style.display='block';$('closeAi').onclick=()=>$('aiChat').style.display='none';document.querySelectorAll('.quick-actions button').forEach(b=>b.onclick=()=>{const m=b.dataset.msg;let r='';if(m.includes('sabores'))r='Disponíveis: Brigadeiro, Oreo, Maracujá e Coco. Morango e Uva estão indisponíveis.';if(m.includes('promoção'))r='Na promoção você escolhe 3 sabores entre Brigadeiro, Oreo, Maracujá e Coco por R$ 14,00.';if(m.includes('Pix')){r='No carrinho aparece somente o QR Code do Pix e o Pix copia e cola.';openCart();animateMascot('point-pix')}encantina(r);});});
+const WHATSAPP = '5531992180872';
+const PIX_KEY = '(31) 99218-0872';
+const PIX_COPY = '00020101021126580014br.gov.bcb.pix0136cbbf4567-58fb-4bdf-9d2e-doceencanto5204000053039865802BR5925INGRID EMANUELLE DAMASCENO6009BELO HORIZONTE62140510DOCEENCANTO6304A1B2';
+const products = [
+  { id:'brigadeiro', name:'Trufa de Brigadeiro', flavor:'Brigadeiro', price:5, available:true, emoji:'🍫', desc:'Recheio cremoso de brigadeiro tradicional.' },
+  { id:'oreo', name:'Trufa de Oreo', flavor:'Oreo', price:5, available:true, emoji:'🖤', desc:'Creme de Oreo com cobertura de chocolate.' },
+  { id:'maracuja', name:'Trufa de Maracujá', flavor:'Maracujá', price:5, available:true, emoji:'💛', desc:'Maracujá cremoso com toque azedinho.' },
+  { id:'coco', name:'Trufa de Coco', flavor:'Coco', price:5, available:true, emoji:'🥥', desc:'Coco cremoso e chocolate na medida certa.' },
+  { id:'morango', name:'Trufa de Morango', flavor:'Morango', price:5, available:false, emoji:'🍓', desc:'Sabor visível, mas indisponível hoje.' },
+  { id:'uva', name:'Trufa de Uva', flavor:'Uva', price:5, available:false, emoji:'🍇', desc:'Sabor visível, mas indisponível hoje.' },
+];
+let cart = JSON.parse(localStorage.getItem('doce_cart_v15') || '[]');
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const money = n => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+function save(){ localStorage.setItem('doce_cart_v15', JSON.stringify(cart)); }
+function mascotSay(text, mood=''){
+  $('#mascotSpeech').textContent = text;
+  const m = $('#mascot');
+  m.classList.remove('jump','point','celebrate');
+  if(mood){ void m.offsetWidth; m.classList.add(mood); }
+}
+function renderProducts(){
+  $('#productGrid').innerHTML = products.map(p => `
+    <article class="product ${!p.available?'unavailable':''}">
+      <div class="emoji">${p.emoji}</div>
+      <h3>${p.name}</h3>
+      <p>${p.desc}</p>
+      <div class="price">${money(p.price)}</div>
+      <button class="btn ${p.available?'secondary':'primary'}" ${!p.available?'disabled':''} data-add="${p.id}">${p.available?'Adicionar ao carrinho':'Indisponível'}</button>
+    </article>
+  `).join('');
+}
+function addItem(product, qty=1, customName=null, price=null){
+  const id = customName ? `promo-${Date.now()}` : product.id;
+  if(customName){ cart.push({ id, name:customName, price, qty }); }
+  else {
+    const existing = cart.find(i=>i.id===product.id);
+    if(existing) existing.qty += qty;
+    else cart.push({ id:product.id, name:product.name, price:product.price, qty });
+  }
+  save(); renderCart(); mascotSay('Eba! Foi para o carrinho 💕','jump'); bumpCart();
+}
+function total(){ return cart.reduce((s,i)=>s+i.price*i.qty,0); }
+function renderCart(){
+  $('#cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
+  $('#cartTotal').textContent = money(total());
+  $('#cartItems').innerHTML = cart.length ? cart.map(i=>`
+    <div class="cart-line">
+      <div><strong>${i.name}</strong><br><small>${money(i.price)} cada</small></div>
+      <div class="qty"><button data-dec="${i.id}">−</button><b>${i.qty}</b><button data-inc="${i.id}">+</button></div>
+    </div>
+  `).join('') : '<p class="muted">Seu carrinho está vazio. Escolha suas trufas favoritas 💖</p>';
+}
+function flyToCart(fromBtn){
+  const tpl = $('#flyTpl').content.firstElementChild.cloneNode(true);
+  const start = fromBtn.getBoundingClientRect(); const target = $('#openCart').getBoundingClientRect();
+  tpl.style.left = `${start.left + start.width/2 - 29}px`; tpl.style.top = `${start.top + start.height/2 - 29}px`;
+  tpl.style.setProperty('--dx', `${target.left - start.left}px`); tpl.style.setProperty('--dy', `${target.top - start.top}px`);
+  document.body.appendChild(tpl); setTimeout(()=>tpl.remove(), 820);
+}
+function bumpCart(){ const c=$('#openCart'); c.animate([{transform:'scale(1)'},{transform:'scale(1.18)'},{transform:'scale(1)'}],{duration:320}); }
+function openCart(){ $('#cartDrawer').classList.add('open'); $('#cartDrawer').setAttribute('aria-hidden','false'); mascotSay('Confira seu pedido no carrinho 🛒'); }
+function closeCart(){ $('#cartDrawer').classList.remove('open'); $('#cartDrawer').setAttribute('aria-hidden','true'); }
+function selectedPay(){ return document.querySelector('input[name="pay"]:checked')?.value || 'Pix'; }
+function buildMessage(){
+  const lines = cart.map(i=>`• ${i.qty}x ${i.name} — ${money(i.price*i.qty)}`).join('\n');
+  const pay = selectedPay();
+  return `🍫 *NOVO PEDIDO - DOCE ENCANTO*\n\nOlá! Quero finalizar meu pedido:\n\n${lines}\n\n💰 *Total:* ${money(total())}\n💳 *Pagamento:* ${pay}\n${pay==='Pix'?`🔑 *Chave Pix:* ${PIX_KEY}\n📌 Vou realizar o pagamento pelo QR Code/Pix copia e cola.`:''}\n\n📍 *Retirada:* Rua Aletes, 78, Pindorama — portão marrom.\n\n💕 Pedido enviado pelo site oficial da Doce Encanto.`;
+}
+function finishWhats(){
+  if(!cart.length){ mascotSay('Escolha uma trufinha antes 💖','point'); openCart(); return; }
+  mascotSay('Pedido enviado! Uhuul 🎉','celebrate');
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`, '_blank');
+}
+function setupPromo(){
+  const boxes = $$('.promoFlavor'); const btn = $('#addPromo');
+  function update(){
+    const checked = boxes.filter(b=>b.checked);
+    if(checked.length > 3){ checked.at(-1).checked = false; mascotSay('A promoção permite escolher 3 sabores 💕','point'); }
+    const now = boxes.filter(b=>b.checked);
+    btn.disabled = now.length !== 3;
+    btn.textContent = now.length === 3 ? 'Adicionar promoção por R$ 14,00' : `Escolha ${3-now.length} sabor(es)`;
+  }
+  boxes.forEach(b=>b.addEventListener('change', update));
+  btn.addEventListener('click', ()=>{
+    const flavors = boxes.filter(b=>b.checked).map(b=>b.value);
+    addItem({}, 1, `Promoção 3 trufas (${flavors.join(', ')})`, 14);
+    boxes.forEach(b=>b.checked=false); update(); openCart();
+  });
+  update();
+}
+document.addEventListener('click', e=>{
+  const add = e.target.closest('[data-add]');
+  if(add){ const p = products.find(x=>x.id===add.dataset.add); flyToCart(add); setTimeout(()=>addItem(p), 260); }
+  if(e.target.closest('#openCart') || e.target.closest('#heroOrder')) openCart();
+  if(e.target.closest('#closeCart')) closeCart();
+  if(e.target.closest('#clearCart')){ cart=[]; save(); renderCart(); mascotSay('Carrinho limpinho! 🧹'); }
+  const inc=e.target.closest('[data-inc]'); if(inc){ const i=cart.find(x=>x.id===inc.dataset.inc); if(i)i.qty++; save(); renderCart(); }
+  const dec=e.target.closest('[data-dec]'); if(dec){ const i=cart.find(x=>x.id===dec.dataset.dec); if(i){ i.qty--; if(i.qty<=0) cart=cart.filter(x=>x.id!==i.id); } save(); renderCart(); }
+  if(e.target.closest('#goPayment')){
+    if(!cart.length){ mascotSay('Seu carrinho ainda está vazio 🛒','point'); return; }
+    const pay = selectedPay();
+    if(pay==='Pix'){ $('#paymentModal').classList.add('open'); closeCart(); mascotSay('Apontei para o Pix! 👉','point'); }
+    else finishWhats();
+  }
+  if(e.target.closest('#backToCart')){ $('#paymentModal').classList.remove('open'); openCart(); }
+  if(e.target.closest('#finishOrder')) finishWhats();
+  if(e.target.closest('#quickWhats')) finishWhats();
+  if(e.target.closest('#copyPix')){ navigator.clipboard?.writeText(PIX_COPY); $('#copyPix').textContent='Pix copiado ✅'; mascotSay('Pix copiado com sucesso! 💳','celebrate'); setTimeout(()=>$('#copyPix').textContent='Copiar Pix copia e cola',1800); }
+});
+window.addEventListener('mousemove', e=>{
+  const m=$('#mascot'); const x=(e.clientX/window.innerWidth-.5)*8; const y=(e.clientY/window.innerHeight-.5)*8;
+  m.style.transform = `translate(${x}px,${y}px)`;
+});
+renderProducts(); renderCart(); setupPromo();
+setInterval(()=>{ const frases=['Posso ajudar você a escolher? 💖','Brigadeiro, Oreo, Maracujá ou Coco?','A promoção 3 por R$14 está esperando ✨']; mascotSay(frases[Math.floor(Math.random()*frases.length)]); }, 9000);
