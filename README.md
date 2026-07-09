@@ -1,8 +1,19 @@
-# Doce Encanto V29 corrigida
+# Doce Encanto V30 — Empresa Inteligente
 
-Alterações desta versão:
-- Oreo agora usa o ícone 🖤 em todos os lugares gerados pelo sistema.
-- Pix agora exibe a imagem real do QR Code em assets/pix-qrcode.png.
-- CSS e JS com cache busting v=29 para evitar navegador mostrar versão antiga.
+Versão focada em melhorar a área da empresa sem exagero.
 
-Como atualizar: envie todos os arquivos desta pasta para a raiz do GitHub.
+## Principais ajustes
+- Pix com QR Code real em destaque.
+- Área da empresa mais funcional para Teteu e Ingrid.
+- Login: `teteu.trufa` / `30707420` e `ingrid.trufa` / `30707420`.
+- Dashboard com vendas, pedidos, estoque total e alertas.
+- Estoque inteligente por sabor, com mínimo configurável.
+- Quando o estoque fica zerado, o sabor fica indisponível no site.
+- Cliente não consegue pedir acima do estoque.
+- Produção sugerida com base no estoque mínimo.
+- Financeiro simples com faturamento, ticket médio e pedidos Pix.
+- Mantém promoção interativa, carrinho, checkout, Trufita AI, PWA e WhatsApp.
+
+## Como publicar
+Extraia o ZIP, selecione todos os arquivos de dentro da pasta e envie para o GitHub em `Add file > Upload files`.
+A Vercel atualiza automaticamente.

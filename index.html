@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Doce Encanto | V27 Promoção Interativa</title>
+  <title>Doce Encanto | V30 Empresa Inteligente</title>
   <meta name="theme-color" content="#ff69a8" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="assets/style.css?v=29" />
+  <link rel="stylesheet" href="assets/style.css?v=30" />
 </head>
 <body>
   <header class="topbar">
@@ -20,7 +20,7 @@
       <div class="copy">
         <p class="tag">Trufas artesanais • retirada ou entrega</p>
         <h1>Seu momento doce começa aqui ✨</h1>
-        <p class="lead">Monte seu pedido, aproveite a promoção interativa e finalize pelo WhatsApp com pagamento Pix.</p>
+        <p class="lead">Monte seu pedido, acompanhe a Trufita AI e finalize com um checkout mais organizado. A empresa agora tem controle inteligente de pedidos, estoque e financeiro.</p>
         <div class="cta"><a class="primary" href="#promo">Montar promoção</a><a class="secondary" href="#cardapio">Ver cardápio</a></div>
       </div>
       <div class="mascotArea">
@@ -75,16 +75,16 @@
       <div class="sectionTitle"><p class="tag">Checkout</p><h2>Finalize seu pedido</h2></div>
       <div class="checkoutGrid">
         <div class="panel"><h3>Recebimento</h3><label><input type="radio" name="fulfillment" value="retirada" checked> Retirada na loja</label><label><input type="radio" name="fulfillment" value="entrega"> Entrega</label><p id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, 30865-180.</p><div id="addressBox" class="hidden"><input id="cep" placeholder="CEP"><input id="rua" placeholder="Rua"><input id="numero" placeholder="Número"><input id="bairro" placeholder="Bairro"></div></div>
-        <div class="panel"><h3>Pagamento</h3><select id="payment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro na retirada</option><option value="cartao">Cartão na retirada</option></select><div id="pixBox" class="pixBox"><img class="qr-img" src="assets/pix-qrcode.png" alt="QR Code Pix da Doce Encanto"><textarea id="pixCode" readonly>00020126360014BR.GOV.BCB.PIX011431992180872520400005303986540514.005802BR5919INGRID EMANUELLE6009BELO HORIZONTE62070503***6304ABCD</textarea><button id="copyPix" class="secondary" type="button">Copiar Pix copia e cola</button></div></div>
+        <div class="panel"><h3>Pagamento</h3><select id="payment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro na retirada</option><option value="cartao">Cartão na retirada</option></select><div id="pixBox" class="pixBox"><img class="qr-img" src="assets/pix-qrcode.png" alt="QR Code Pix da Doce Encanto"><p class="pixHint">Escaneie o QR Code no app do banco para pagar.</p><textarea id="pixCode" readonly>00020126360014BR.GOV.BCB.PIX011431992180872520400005303986540514.005802BR5919INGRID EMANUELLE6009BELO HORIZONTE62070503***6304ABCD</textarea><button id="copyPix" class="secondary" type="button">Copiar Pix copia e cola</button></div></div>
         <div class="panel"><h3>Resumo</h3><div id="checkoutItems"></div><div class="line"><span>Produtos</span><b id="subtotal">R$0,00</b></div><div class="line"><span>Frete</span><b id="frete">R$0,00</b></div><div class="line total"><span>Total</span><b id="grandTotal">R$0,00</b></div><button id="finishOrder" class="primary full">Finalizar pedido</button></div>
       </div>
     </section>
 
-    <section id="empresa" class="section"><div class="panel"><h2>Central da Empresa</h2><p>Pedidos, estoque, produção e financeiro.</p><div class="login"><input id="user" placeholder="Usuário"><input id="pass" type="password" placeholder="Senha"><button id="loginBtn" class="primary">Entrar</button></div><div id="adminPanel" class="hidden"></div></div></section>
+    <section id="empresa" class="section companySection"><div class="panel"><p class="tag">Acesso restrito</p><h2>Central da Empresa V30</h2><p>Área mais limpa para Teteu e Ingrid acompanharem pedidos, estoque inteligente, produção sugerida, financeiro e relatórios sem exagero.</p><div class="login"><input id="user" placeholder="Usuário"><input id="pass" type="password" placeholder="Senha"><button id="loginBtn" class="primary">Entrar</button></div><div id="adminPanel" class="hidden"></div></div></section>
   </main>
 
   <aside id="cartDrawer" class="drawer"><div class="drawerHead"><h2>Meu pedido</h2><button id="cartClose" class="ghost">Voltar</button></div><div id="cartItems"></div><div class="drawerTotal"><span>Total</span><b id="cartTotal">R$0,00</b></div><button id="clearCart" class="ghost full">Limpar carrinho</button><a id="goCheckout" href="#checkout" class="primary full">Ir para pagamento</a></aside>
   <div id="overlay" class="overlay"></div>
-  <script src="assets/app.js?v=29"></script>
+  <script src="assets/app.js?v=30"></script>
 </body>
 </html>
