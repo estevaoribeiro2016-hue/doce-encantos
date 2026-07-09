@@ -6,7 +6,9 @@ const BASE_PRODUCTS=[
  {id:'maracuja',name:'Maracujá',emoji:'💛',price:5,stock:20,min:8,desc:'Equilibrada, com toque cítrico que combina muito com chocolate.'},
  {id:'coco',name:'Coco',emoji:'🥥',price:5,stock:20,min:8,desc:'Suave, cremosa e delicada.'}
 ];
-const STORE='de_v32_';
+const STORE='de_v34_';
+const STORE_ADDRESS='Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
+let deliveryInfo={type:'retirada',distanceKm:null,durationMin:null,fee:0,status:'Retirada na loja'};
 let inventory=JSON.parse(localStorage.getItem(STORE+'inventory')||'null')||BASE_PRODUCTS.map(p=>({id:p.id,stock:p.stock,min:p.min}));
 let products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));
 let cart=JSON.parse(localStorage.getItem(STORE+'cart')||'[]');
@@ -77,12 +79,28 @@ function promoMinus(id){let idx=promo.lastIndexOf(id); if(idx>=0){promo.splice(i
 function addPromo(){if(promo.length!==3)return;let flavors=promo.map(id=>({id,name:productById(id).name,emoji:productById(id).emoji})); cart.push({id:'promo-'+Date.now(),name:'Promoção 3 trufas',emoji:'🎁',qty:1,price:14,flavors}); promo=[]; save(); renderPromo(); renderCart(); jump('Promoção adicionada ao carrinho! 🛒');}
 function suggestPromo(){promo=['maracuja','coco','oreo'].filter(id=>productById(id).stock>cartQty(id)).slice(0,3);renderPromo();say('Minha sugestão equilibrada: Maracujá, Coco e Oreo. Uma cítrica, uma suave e uma mais docinha 💖');}
 function addItem(id,btn){let p=productById(id); if(p.stock<=0)return say(`${p.name} está indisponível hoje.`); if(cartQty(id)>=p.stock)return say(`Você atingiu o limite de estoque de ${p.name}.`); let item=cart.find(i=>i.id===id&&!i.flavors); if(item)item.qty++; else cart.push({...p,qty:1}); fly(btn,p.emoji); jump(`${p.name} foi para o carrinho! Excelente escolha 🍫`); save(); renderCart();}
+function deliveryFee(){
+ const f=$('[name=fulfillment]:checked')?.value||'retirada';
+ if(f!=='entrega') return 0;
+ if(calc()<30) return 0;
+ if(deliveryInfo && typeof deliveryInfo.fee==='number') return deliveryInfo.fee;
+ return 0;
+}
+function updateTotals(){
+ const sub=calc(), fee=deliveryFee(), total=sub+fee;
+ if($('#subtotal')) $('#subtotal').textContent=BRL(sub);
+ if($('#frete')) $('#frete').textContent=$('[name=fulfillment]:checked')?.value==='entrega'&&sub<30?'Entrega só acima de R$30':BRL(fee);
+ if($('#grandTotal')) $('#grandTotal').textContent=BRL(total);
+ if($('#distanceLabel')) $('#distanceLabel').textContent=deliveryInfo.distanceKm?`${deliveryInfo.distanceKm.toFixed(1).replace('.',',')} km`:'—';
+ if($('#cartTotal')) $('#cartTotal').textContent=BRL(sub);
+}
 function renderCart(){
- const totalQty=cart.reduce((a,i)=>a+i.qty,0); $('#cartCount').textContent=totalQty; $('#cartTotal').textContent=BRL(calc()); $('#subtotal').textContent=BRL(calc()); $('#grandTotal').textContent=BRL(calc()); $('#frete').textContent=$('[name=fulfillment]:checked')?.value==='entrega'&&calc()<30?'Entrega só acima de R$30':BRL(0);
+ const totalQty=cart.reduce((a,i)=>a+i.qty,0); $('#cartCount').textContent=totalQty;
  const html=cart.length?cart.map((i,idx)=>`<div class="cartRow"><div><b>${i.emoji} ${i.name}</b><br><small>${i.flavors?i.flavors.map(f=>f.name).join(', '):''}</small></div><div class="qty"><button data-dec="${idx}">-</button><b>${i.qty}</b><button data-inc="${idx}">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
  $('#cartItems').innerHTML=html; $('#checkoutItems').innerHTML=html;
  $$('[data-dec]').forEach(b=>b.onclick=()=>{let i=cart[b.dataset.dec];i.qty--;if(i.qty<=0)cart.splice(b.dataset.dec,1);save();renderCart()});
  $$('[data-inc]').forEach(b=>b.onclick=()=>{let i=cart[b.dataset.inc]; if(i.flavors)return; if(cartQty(i.id)>=productById(i.id).stock)return say(`Limite de ${i.name} atingido.`); i.qty++;save();renderCart()});
+ updateTotals();
 }
 function aiAnswer(q){q=q.toLowerCase();if(/menos doce|não.*doce|nao.*doce|enjoativo/.test(q))return '💛 Eu recomendo a trufa de Maracujá. O recheio cítrico equilibra muito bem o chocolate e deixa o sabor menos enjoativo. Se quiser algo mais suave, Coco também é uma ótima escolha.';if(/promo|3|14/.test(q))return '🎉 A promoção é 3 trufas por R$14. Você pode escolher Brigadeiro, Oreo, Maracujá e Coco, repetindo sabores se quiser. Exemplo: 3 Maracujá ou 2 Oreo + 1 Coco.';if(/estoque|tem hoje|sabores/.test(q))return 'Hoje temos: '+products.map(p=>`${p.emoji} ${p.name}: ${p.stock>0?p.stock+' disponíveis':'indisponível'}`).join(', ')+'.';if(/20|vinte/.test(q))return 'Com R$20 eu aproveitaria a promoção de 3 por R$14. Minha sugestão: Maracujá, Oreo e Brigadeiro.';if(/presente|namorada|esposa|anivers/.test(q))return '🎁 Para presente eu montaria uma caixa com Brigadeiro, Oreo, Maracujá e Coco. Fica bonita, variada e agrada vários gostos.';if(/cart|dinheiro|pix|pagamento/.test(q))return 'Para retirada aceitamos Pix, dinheiro ou cartão. Para entrega, somente Pix.';return 'Me conta seu gosto: você prefere mais chocolate, mais docinha, mais suave ou mais equilibrada? Eu monto uma sugestão para você. 🍫'}
 function addChat(t,who='bot'){$('#chatLog').innerHTML+=`<div class="msg ${who}">${t}</div>`;$('#chatLog').scrollTop=$('#chatLog').scrollHeight;}
@@ -92,7 +110,7 @@ function maskCep(v){v=onlyDigits(v).slice(0,8);return v.length>5?v.slice(0,5)+'-
 async function lookupCep(){
  const cepEl=$('#cep'); if(!cepEl)return;
  const status=$('#cepStatus'); const raw=onlyDigits(cepEl.value);
- cepEl.value=maskCep(cepEl.value);
+ cepEl.value=maskCep(cepEl.value); resetDeliveryQuote();
  if(raw.length<8){ if(status){status.textContent='Digite o CEP para preencher a rua automaticamente.';status.className='cepStatus'} return; }
  if(status){status.textContent='Buscando endereço pelo CEP...';status.className='cepStatus loading'}
  try{
@@ -103,17 +121,63 @@ async function lookupCep(){
   if($('#bairro')) $('#bairro').value=data.bairro||'';
   if($('#cidade')) $('#cidade').value=data.localidade||'';
   if($('#estado')) $('#estado').value=data.uf||'';
-  if(status){status.textContent='Endereço preenchido automaticamente. Complete apenas o número.';status.className='cepStatus ok'}
+  if(status){status.textContent='Endereço preenchido automaticamente. Complete apenas o número e calcule o frete.';status.className='cepStatus ok'}
   $('#numero')?.focus();
  }catch(e){ if(status){status.textContent='Não foi possível consultar o CEP agora. Você pode preencher manualmente.';status.className='cepStatus error'} }
 }
+function resetDeliveryQuote(){
+ deliveryInfo={type:$('[name=fulfillment]:checked')?.value||'retirada',distanceKm:null,durationMin:null,fee:0,status:'Informe o endereço e calcule o frete'};
+ const box=$('#deliveryQuote'); if(box){box.classList.add('hidden'); box.innerHTML=''}
+ updateTotals();
+}
+function deliveryAddressText(){return `${$('#rua')?.value||''}, ${$('#numero')?.value||''}, ${$('#bairro')?.value||''}, ${$('#cidade')?.value||''}/${$('#estado')?.value||''}, CEP ${$('#cep')?.value||''}`.replace(/\s+/g,' ').trim()}
+async function calculateDeliveryDistance(){
+ if($('[name=fulfillment]:checked')?.value!=='entrega') return;
+ if(calc()<30) return alert('Entrega disponível somente a partir de R$30,00.');
+ const required=['cep','rua','numero','bairro','cidade','estado'];
+ for(const id of required){if(!$('#'+id)?.value.trim()) return alert('Preencha CEP, rua, número, bairro, cidade e UF para calcular o frete.')}
+ const box=$('#deliveryQuote'); if(box){box.classList.remove('hidden');box.innerHTML='<b>Calculando distância real...</b><br><small>Consultando rota pela API.</small>'}
+ try{
+  const res=await fetch('/api/distance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination:deliveryAddressText()})});
+  const data=await res.json();
+  if(!res.ok || data.error) throw new Error(data.error||'Falha na API');
+  const km=Number(data.distanceKm||0);
+  const fee=km<=2?5:10;
+  deliveryInfo={type:'entrega',distanceKm:km,durationMin:data.durationMin?Number(data.durationMin):null,fee,status:'Frete calculado'};
+  if(box){box.innerHTML=`<b>📍 Distância: ${km.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b>${data.durationMin?`<br><small>Tempo estimado: ${Math.round(data.durationMin)} min</small>`:''}`}
+  say(km<=2?`Boa! Esse endereço está dentro da área próxima. Frete: ${BRL(5)} 💖`:`Esse endereço fica a ${km.toFixed(1).replace('.',',')} km. Frete: ${BRL(10)} 🚚`);
+ }catch(e){
+  const cep=onlyDigits($('#cep')?.value||'');
+  const fallback=(cep.startsWith('30865')||cep.startsWith('3086'))?1.8:3.2;
+  const fee=fallback<=2?5:10;
+  deliveryInfo={type:'entrega',distanceKm:fallback,durationMin:null,fee,status:'Frete aproximado - API indisponível'};
+  if(box){box.innerHTML=`<b>⚠ Frete aproximado</b><br><b>📍 Distância estimada: ${fallback.toFixed(1).replace('.',',')} km</b><br><b>🚚 Frete: ${BRL(fee)}</b><br><small>Configure OPENROUTESERVICE_API_KEY na Vercel para cálculo real.</small>`}
+ }
+ updateTotals();
+}
+function orderItemsText(items){
+ return items.map(i=>`• ${i.qty}x ${i.name}${i.flavors?'\n   Sabores: '+i.flavors.map(f=>f.name).join(', '):''}`).join('\n');
+}
 function finish(){
- if(!cart.length)return alert('Carrinho vazio.'); let f=$('[name=fulfillment]:checked').value, pay=$('#payment').value;
- if(f==='entrega'){if(calc()<30)return alert('Entrega somente acima de R$30.'); if(!cep.value||!rua.value||!numero.value||!bairro.value||!cidade.value||!estado.value)return alert('Informe CEP, rua, número, bairro, cidade e UF.'); if(pay!=='pix')return alert('Para entrega, somente Pix.');}
- let order={id:Date.now().toString().slice(-6),items:cart,total:calc(),fulfillment:f,payment:pay,status:'Recebido',created:new Date().toLocaleString('pt-BR')};
+ if(!cart.length)return alert('Carrinho vazio.');
+ const f=$('[name=fulfillment]:checked').value, pay=$('#payment').value;
+ const customerName=($('#customerName')?.value||'').trim();
+ const customerPhone=($('#customerPhone')?.value||'').trim();
+ if(!customerName) return alert('Informe o nome do cliente.');
+ if(!customerPhone) return alert('Informe o telefone/WhatsApp do cliente.');
+ if(f==='entrega'){
+   if(calc()<30)return alert('Entrega somente acima de R$30.');
+   if(!$('#cep').value||!$('#rua').value||!$('#numero').value||!$('#bairro').value||!$('#cidade').value||!$('#estado').value)return alert('Informe CEP, rua, número, bairro, cidade e UF.');
+   if(pay!=='pix')return alert('Para entrega, somente Pix.');
+   if(!deliveryInfo.distanceKm){return alert('Calcule o frete antes de finalizar a entrega.');}
+ }
+ const id='DE'+Date.now().toString().slice(-6);
+ const sub=calc(), fee=f==='entrega'?deliveryFee():0, total=sub+fee;
+ let order={id,customerName,customerPhone,items:cart,total,subtotal:sub,frete:fee,distanceKm:deliveryInfo.distanceKm,durationMin:deliveryInfo.durationMin,fulfillment:f,payment:pay,status:'Recebido',paymentStatus:pay==='pix'?'Aguardando comprovante':'Pagamento na retirada',created:new Date().toLocaleString('pt-BR'),address:f==='entrega'?deliveryAddressText():STORE_ADDRESS};
  order.items.forEach(i=>{if(i.flavors){i.flavors.forEach(f=>{let p=productById(f.id);p.stock=Math.max(0,p.stock-1)})}else{let p=productById(i.id);p.stock=Math.max(0,p.stock-i.qty)}});
- orders.unshift(order); const msg=`🍫 *Novo pedido Doce Encanto*\n\n🧾 Pedido #${order.id}\n${cart.map(i=>`• ${i.qty}x ${i.name}${i.flavors?' ('+i.flavors.map(f=>f.name).join(', ')+')':''}`).join('\n')}\n\n💰 Total: ${BRL(calc())}\n📦 ${f}\n💳 ${pay}\n${f==='retirada'?'📍 Retirada: Rua Aletes, 78, Pindorama, 30865-180.':`🏠 Entrega: ${rua.value}, ${numero.value}, ${bairro.value}, ${cidade.value}/${estado.value}, CEP ${cep.value}`}\n\nObrigada pelo pedido 💖`;
- cart=[]; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! A Trufita está comemorando 🎉'); window.open('https://wa.me/5531992180872?text='+encodeURIComponent(msg),'_blank');
+ orders.unshift(order);
+ const msg=`🍫 *NOVO PEDIDO - DOCE ENCANTO*\n\n📦 *Pedido:* ${order.id}\n📅 *Data:* ${order.created}\n\n👤 *Cliente*\nNome: ${customerName}\nTelefone: ${customerPhone}\n\n━━━━━━━━━━━━━━\n🛒 *ITENS*\n${orderItemsText(cart)}\n\n━━━━━━━━━━━━━━\n💵 *Resumo*\nSubtotal: ${BRL(sub)}\nFrete: ${BRL(fee)}\nTotal: *${BRL(total)}*\n\n━━━━━━━━━━━━━━\n${f==='retirada'?`🏪 *RETIRADA NA LOJA*\nEndereço: ${STORE_ADDRESS}`:`🚚 *ENTREGA*\nEndereço: ${deliveryAddressText()}\nDistância: ${deliveryInfo.distanceKm?deliveryInfo.distanceKm.toFixed(1).replace('.',',')+' km':'não calculada'}\nFrete aplicado: ${BRL(fee)}`}\n\n━━━━━━━━━━━━━━\n💳 *Pagamento*\nForma: ${pay.toUpperCase()}\nStatus: ${order.paymentStatus}\nComprovante: ${pay==='pix'?'Aguardando envio/confirmação':'Não necessário agora'}\n${f==='entrega'&&deliveryInfo.durationMin?'Tempo estimado: '+Math.round(deliveryInfo.durationMin)+' min':''}\n\n📦 *Produção*\nStatus: Recebido\n\n✅ Pedido enviado pelo site da Doce Encanto.`;
+ cart=[]; deliveryInfo={type:'retirada',distanceKm:null,durationMin:null,fee:0,status:'Retirada na loja'}; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! A mensagem completa foi enviada para o WhatsApp 🎉'); window.open('https://wa.me/5531992180872?text='+encodeURIComponent(msg),'_blank');
 }
 function stockStatus(p){if(p.stock<=0)return ['Sem estoque','danger','Produzir hoje']; if(p.stock<=p.min)return ['Atenção','warn','Repor em breve']; return ['OK','ok','Estoque saudável'];}
 function renderAdmin(){
@@ -131,4 +195,4 @@ function renderAdmin(){
 async function loginAdmin(){const u=$('#user').value.trim(), p=$('#pass').value.trim(); if(ADMIN_USERS[u]&&p==='30707420'){const ok=await requireFaceId(u); if(!ok)return; currentAdmin=u; $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}else alert('Usuário ou senha incorretos.');}
 renderProducts();renderPromo();renderCart();addChat('Oii! Eu sou a Trufita AI 💖. Posso indicar sabores, explicar promoções e consultar o estoque para você.');
 $('#cartOpen').onclick=()=>{$('#cartDrawer').classList.add('open');$('#overlay').classList.add('show')};$('#cartClose').onclick=$('#overlay').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};$('#clearCart').onclick=()=>{cart=[];save();renderCart();say('Carrinho limpo. Posso te ajudar a montar uma nova promoção 😊')};$('#goCheckout').onclick=()=>{$('#cartDrawer').classList.remove('open');$('#overlay').classList.remove('show')};
-$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Apontei o QR Code para você 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'}; if($('#cep')){$('#cep').addEventListener('input',()=>{$('#cep').value=maskCep($('#cep').value)});$('#cep').addEventListener('blur',lookupCep);$('#cep').addEventListener('change',lookupCep)};if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+$$('[name=fulfillment]').forEach(r=>r.onchange=()=>{let entrega=$('[name=fulfillment]:checked').value==='entrega';$('#addressBox').classList.toggle('hidden',!entrega);$('#storeAddress').classList.toggle('hidden',entrega);resetDeliveryQuote();if(entrega){$('#payment').value='pix';pointPix('Para entrega, usamos Pix. Informe o endereço para eu calcular o frete 💖')}renderCart()});$('#payment').onchange=()=>{if($('[name=fulfillment]:checked').value==='entrega'&&$('#payment').value!=='pix'){$('#payment').value='pix';alert('Para entrega, somente Pix.')}if($('#payment').value==='pix')pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱')};$('#copyPix').onclick=()=>navigator.clipboard?.writeText($('#pixCode').value).then(()=>alert('Pix copia e cola copiado!'));$('#finishOrder').onclick=finish;$('#addPromo').onclick=addPromo;$('#resetPromo').onclick=()=>{promo=[];renderPromo()};$('#suggestPromo').onclick=suggestPromo;$('#aiForm').onsubmit=e=>{e.preventDefault();let q=$('#aiInput').value.trim();if(!q)return;addChat(q,'user');let a=aiAnswer(q);setTimeout(()=>{addChat(a);say(a.split('.')[0]+'.')},160);$('#aiInput').value=''};$$('.chips button').forEach(b=>b.onclick=()=>{$('#aiInput').value=b.dataset.q;$('#aiForm').dispatchEvent(new Event('submit'))});$('#loginBtn').onclick=loginAdmin; const faceBtn=$('#faceRegister'); if(faceBtn)faceBtn.onclick=registerFaceId; $('#themeToggle').onclick=()=>{document.body.classList.toggle('dark');$('#themeToggle').textContent=document.body.classList.contains('dark')?'☀️':'🌙'}; if($('#cep')){$('#cep').addEventListener('input',()=>{$('#cep').value=maskCep($('#cep').value);resetDeliveryQuote()});$('#cep').addEventListener('blur',lookupCep);$('#cep').addEventListener('change',lookupCep)};['rua','numero','bairro','cidade','estado'].forEach(id=>{$('#'+id)?.addEventListener('input',resetDeliveryQuote)});$('#calcDistance')?.addEventListener('click',calculateDeliveryDistance);if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});

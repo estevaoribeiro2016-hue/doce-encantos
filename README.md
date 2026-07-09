@@ -1,30 +1,35 @@
-# Doce Encanto V32 — Acessos Seguros
+# Doce Encanto V34 — Frete real + WhatsApp completo
 
-Versão focada em corrigir e organizar os acessos da Central da Empresa.
+Esta versão mantém o projeto em HTML estático, mas inclui função Vercel em `/api/distance` para calcular distância real com OpenRouteService sem expor a API Key no navegador.
 
-## Principais ajustes
-- Pix com QR Code real em destaque.
-- Área da empresa mais funcional e segura.
-- Login Teteu: `teteu.trufa` / `30707420`.
-- Login Ingrid: `ingrid.trufa` / `30707420`.
-- Ingrid tem o mesmo acesso total que Teteu.
-- O login sempre exige senha primeiro.
-- Face ID/Windows Hello pode ser cadastrado depois de informar usuário autorizado e senha.
-- Dashboard com vendas, pedidos, estoque total e alertas.
-- Estoque inteligente por sabor, com mínimo configurável.
-- Quando o estoque fica zerado, o sabor fica indisponível no site.
-- Cliente não consegue pedir acima do estoque.
-- Produção sugerida com base no estoque mínimo.
-- Financeiro simples com faturamento, ticket médio e pedidos Pix.
-- Mantém promoção interativa, carrinho, checkout, Trufita AI, PWA e WhatsApp.
+## Inclui
 
-## Como publicar
-Extraia o ZIP, selecione todos os arquivos de dentro da pasta e envie para o GitHub em `Add file > Upload files`.
-A Vercel atualiza automaticamente.
+- CEP automático via ViaCEP.
+- Cálculo real de distância pela OpenRouteService usando `OPENROUTESERVICE_API_KEY`.
+- Frete automático:
+  - até 2 km: R$ 5,00;
+  - acima de 2 km: R$ 10,00.
+- Checkout com retirada ou entrega.
+- Entrega somente com Pix.
+- Retirada com Pix, dinheiro ou cartão.
+- WhatsApp completo com cliente, telefone, itens, subtotal, frete, total, endereço, distância, pagamento e status.
+- QR Code Pix mantido.
+- Central da empresa, estoque, carrinho e Trufita mantidos.
 
+## Antes de subir
 
-## V32
-- Checkout de entrega agora consulta CEP automaticamente via ViaCEP.
-- Ao informar o CEP, o sistema preenche rua, bairro, cidade e UF.
-- Cliente completa apenas o número da residência.
-- Se o CEP não for encontrado, o cliente pode preencher manualmente.
+Na Vercel, configure:
+
+`Settings → Environment Variables`
+
+Key:
+`OPENROUTESERVICE_API_KEY`
+
+Value:
+Sua chave nova da OpenRouteService.
+
+Marque Production e Preview.
+
+## Como atualizar
+
+Extraia o ZIP, entre na pasta e envie todos os arquivos para o GitHub na raiz do repositório.

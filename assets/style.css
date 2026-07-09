@@ -18,3 +18,11 @@
 .cepStatus.error{color:#b42318;font-weight:700}
 .addressSplit{display:grid;grid-template-columns:1fr 90px;gap:10px}
 @media(max-width:640px){.addressSplit{grid-template-columns:1fr}}
+
+/* V33 - Frete inteligente e WhatsApp completo */
+.checkoutGridV33{grid-template-columns:1fr 1.2fr 1fr 1fr}
+.deliveryQuote{margin-top:12px;padding:14px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(135deg,#fff7fb,#fffbea);line-height:1.5}
+.dark .deliveryQuote{background:linear-gradient(135deg,#2c1712,#3a1d27)}
+#customerName,#customerPhone{margin-bottom:10px}
+@media(max-width:1100px){.checkoutGridV33{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.checkoutGridV33{grid-template-columns:1fr}}

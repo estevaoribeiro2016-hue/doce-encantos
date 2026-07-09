@@ -1,1 +1,5 @@
-{"cleanUrls":true,"trailingSlash":false,"rewrites":[{"source":"/cliente","destination":"/cliente/index.html"},{"source":"/empresa","destination":"/empresa/index.html"},{"source":"/admin","destination":"/admin/index.html"}]}
+{
+  "functions": {
+    "api/distance.js": { "maxDuration": 10 }
+  }
+}
