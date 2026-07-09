@@ -1,1 +1,28 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Meu pedido | Doce Encanto</title><link rel="stylesheet" href="../assets/style.css"></head><body><header class="topbar"><a class="brand" href="../"><span class="brand-logo">💝</span><span><strong>Doce Encanto</strong><small>Área do cliente</small></span></a><nav><a href="../">Site</a><a href="../empresa/">Empresa</a></nav></header><main class="section"><div class="promo-panel"><div><span class="pill pink">Cliente</span><h1>Meu pedido</h1><p>Em breve você acompanhará seu pedido por código. Por enquanto, finalize pelo WhatsApp e acompanhe direto com a Doce Encanto.</p><a class="btn primary" href="../">Fazer novo pedido</a></div><div class="mascot-stage"><img src="../assets/encantina.png" class="mascot"></div></div></main></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meu Pedido | Doce Encanto</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <main class="login-shell">
+    <section class="panel-shell">
+      <a class="mini-link" href="../">← Voltar ao site</a>
+      <h1>👤 Área do Cliente</h1>
+      <p class="muted">Acompanhe o último pedido feito neste aparelho.</p>
+      <div id="pedido"></div>
+    </section>
+  </main>
+  <script>
+    const money = n => Number(n || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const order = JSON.parse(localStorage.getItem('doce_last_order') || 'null');
+    const el = document.getElementById('pedido');
+    if(!order){ el.innerHTML = '<div class="admin-empty">Nenhum pedido encontrado neste aparelho.</div>'; }
+    else {
+      el.innerHTML = `<article class="order-card"><div class="order-meta"><span class="tag">${order.id}</span><span class="tag">${order.status}</span><span class="tag">${money(order.total)}</span></div><h3>${order.customer?.name || 'Cliente'}</h3><p>${order.items.map(i=>`${i.qty}x ${i.name}`).join('<br>')}</p><p class="muted">Status atualizado pela Central da Empresa quando usado no mesmo navegador/dispositivo.</p></article>`;
+    }
+  </script>
+</body>
+</html>

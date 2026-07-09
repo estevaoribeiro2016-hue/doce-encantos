@@ -27,10 +27,10 @@
       <div class="hero-copy">
         <span class="pill">Pedido por WhatsApp • Pix disponível</span>
         <h1>Seu momento doce começa aqui ✨</h1>
-        <p>Monte seu carrinho com trufas artesanais da Doce Encanto e finalize com uma mensagem pronta no WhatsApp.</p>
+        <p>Monte seu carrinho com trufas artesanais da Doce Encanto e finalize com uma mensagem pronta e profissional no WhatsApp.</p>
         <div class="hero-actions">
           <a class="btn primary" href="#cardapio">Ver cardápio</a>
-          <button class="btn secondary" id="heroOrder">Fazer pedido</button>
+          <button class="btn secondary" id="heroOrder">Abrir carrinho</button>
         </div>
       </div>
 
@@ -46,14 +46,14 @@
       <div>
         <span class="pill pink">Promoção especial</span>
         <h2>3 trufas por R$ 14,00</h2>
-        <p>Escolha 3 sabores entre Brigadeiro, Oreo, Maracujá e Coco.</p>
+        <p>Escolha qualquer combinação: 3 Maracujá, 2 Maracujá + 1 Oreo, ou misture como quiser.</p>
       </div>
-      <div class="promo-picker">
-        <label><input type="checkbox" value="Brigadeiro" class="promoFlavor"> Brigadeiro</label>
-        <label><input type="checkbox" value="Oreo" class="promoFlavor"> Oreo</label>
-        <label><input type="checkbox" value="Maracujá" class="promoFlavor"> Maracujá</label>
-        <label><input type="checkbox" value="Coco" class="promoFlavor"> Coco</label>
-        <button class="btn primary" id="addPromo" disabled>Escolha 3 sabores</button>
+      <div class="promo-builder">
+        <div class="promo-row" data-promo="Brigadeiro"><span>Brigadeiro</span><div><button data-promo-dec="Brigadeiro">−</button><b id="promo-Brigadeiro">0</b><button data-promo-inc="Brigadeiro">+</button></div></div>
+        <div class="promo-row" data-promo="Oreo"><span>Oreo</span><div><button data-promo-dec="Oreo">−</button><b id="promo-Oreo">0</b><button data-promo-inc="Oreo">+</button></div></div>
+        <div class="promo-row" data-promo="Maracujá"><span>Maracujá</span><div><button data-promo-dec="Maracujá">−</button><b id="promo-Maracujá">0</b><button data-promo-inc="Maracujá">+</button></div></div>
+        <div class="promo-row" data-promo="Coco"><span>Coco</span><div><button data-promo-dec="Coco">−</button><b id="promo-Coco">0</b><button data-promo-inc="Coco">+</button></div></div>
+        <button class="btn primary full" id="addPromo" disabled>Escolha 3 trufas</button>
       </div>
     </section>
 
@@ -79,6 +79,12 @@
       <div class="total-box">
         <span>Total</span><strong id="cartTotal">R$ 0,00</strong>
       </div>
+      <div class="customer-box">
+        <h3>Dados para o pedido</h3>
+        <input id="customerName" placeholder="Seu nome" autocomplete="name" />
+        <input id="customerPhone" placeholder="Seu WhatsApp" autocomplete="tel" />
+        <input id="customerNote" placeholder="Observação opcional" />
+      </div>
       <div class="pay-box">
         <h3>Pagamento</h3>
         <label><input type="radio" name="pay" value="Pix" checked> Pix</label>
@@ -93,7 +99,6 @@
     <div class="payment-card">
       <button class="ghost back" id="backToCart">← Voltar ao carrinho</button>
       <h2>Pagamento via Pix</h2>
-      <p class="muted">Escaneie o QR Code ou copie o Pix copia e cola.</p>
       <img src="assets/pix-qrcode.png" alt="QR Code Pix Doce Encanto" class="qr" />
       <textarea id="pixCopy" readonly>00020101021126580014br.gov.bcb.pix0136cbbf4567-58fb-4bdf-9d2e-doceencanto5204000053039865802BR5925INGRID EMANUELLE DAMASCENO6009BELO HORIZONTE62140510DOCEENCANTO6304A1B2</textarea>
       <button class="btn secondary full" id="copyPix">Copiar Pix copia e cola</button>
@@ -102,7 +107,6 @@
   </section>
 
   <template id="flyTpl"><img src="assets/encantina.png" class="flying-truffle" alt=""></template>
-
   <script src="assets/app.js"></script>
 </body>
 </html>

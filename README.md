@@ -1,6 +1,9 @@
-# Doce Encanto V15 Completa
+# Doce Encanto V16
 
-Versão com carrinho lateral, animação de produto voando ao carrinho, promoção de 3 trufas por R$14, Pix com QR Code e Pix copia e cola, WhatsApp melhorado e mascote Encantina animada no site.
+Versão com central da empresa, login local, promoção com sabores repetidos, carrinho, Pix e WhatsApp melhorado.
 
-## Como subir no GitHub
-Selecione o conteúdo desta pasta e envie para o repositório `doce-encantos` em Add file > Upload files.
+Acesso empresa:
+- usuário: teteu.trufa / senha: 30707420
+- usuário: ingrid.trufa / senha: 30707420
+
+Observação: esta versão é estática. Os pedidos aparecem em tempo real quando o cliente e a central usam o mesmo domínio/navegador. Para avisos automáticos no WhatsApp sem abrir janela e pedidos entre dispositivos, a próxima etapa é backend com Supabase + WhatsApp Business API.

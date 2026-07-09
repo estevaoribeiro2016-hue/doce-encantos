@@ -9,11 +9,12 @@ const products = [
   { id:'morango', name:'Trufa de Morango', flavor:'Morango', price:5, available:false, emoji:'🍓', desc:'Sabor visível, mas indisponível hoje.' },
   { id:'uva', name:'Trufa de Uva', flavor:'Uva', price:5, available:false, emoji:'🍇', desc:'Sabor visível, mas indisponível hoje.' },
 ];
-let cart = JSON.parse(localStorage.getItem('doce_cart_v15') || '[]');
+let cart = JSON.parse(localStorage.getItem('doce_cart_v16') || '[]');
+let promo = { Brigadeiro:0, Oreo:0, Maracujá:0, Coco:0 };
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const money = n => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-function save(){ localStorage.setItem('doce_cart_v15', JSON.stringify(cart)); }
+function save(){ localStorage.setItem('doce_cart_v16', JSON.stringify(cart)); }
 function mascotSay(text, mood=''){
   $('#mascotSpeech').textContent = text;
   const m = $('#mascot');
@@ -63,36 +64,44 @@ function bumpCart(){ const c=$('#openCart'); c.animate([{transform:'scale(1)'},{
 function openCart(){ $('#cartDrawer').classList.add('open'); $('#cartDrawer').setAttribute('aria-hidden','false'); mascotSay('Confira seu pedido no carrinho 🛒'); }
 function closeCart(){ $('#cartDrawer').classList.remove('open'); $('#cartDrawer').setAttribute('aria-hidden','true'); }
 function selectedPay(){ return document.querySelector('input[name="pay"]:checked')?.value || 'Pix'; }
-function buildMessage(){
-  const lines = cart.map(i=>`• ${i.qty}x ${i.name} — ${money(i.price*i.qty)}`).join('\n');
-  const pay = selectedPay();
-  return `🍫 *NOVO PEDIDO - DOCE ENCANTO*\n\nOlá! Quero finalizar meu pedido:\n\n${lines}\n\n💰 *Total:* ${money(total())}\n💳 *Pagamento:* ${pay}\n${pay==='Pix'?`🔑 *Chave Pix:* ${PIX_KEY}\n📌 Vou realizar o pagamento pelo QR Code/Pix copia e cola.`:''}\n\n📍 *Retirada:* Rua Aletes, 78, Pindorama — portão marrom.\n\n💕 Pedido enviado pelo site oficial da Doce Encanto.`;
+function customer(){ return { name: $('#customerName')?.value.trim() || 'Cliente', phone: $('#customerPhone')?.value.trim() || 'Não informado', note: $('#customerNote')?.value.trim() || '' }; }
+function makeOrder(){
+  const c = customer();
+  const order = { id: `DE-${Date.now().toString().slice(-6)}`, createdAt: new Date().toISOString(), customer:c, items:cart, total:total(), payment:selectedPay(), status:'Recebido' };
+  const orders = JSON.parse(localStorage.getItem('doce_orders_v16') || '[]');
+  orders.unshift(order); localStorage.setItem('doce_orders_v16', JSON.stringify(orders));
+  localStorage.setItem('doce_last_order', JSON.stringify(order));
+  return order;
+}
+function buildMessage(order){
+  const lines = order.items.map(i=>`• ${i.qty}x ${i.name} — ${money(i.price*i.qty)}`).join('\n');
+  const pix = order.payment==='Pix' ? `\n💳 *PIX:* cliente vai pagar pelo QR Code / Pix copia e cola.\n🔑 Chave Pix: ${PIX_KEY}` : '';
+  return `🍫✨ *NOVO PEDIDO - DOCE ENCANTO* ✨🍫\n\n🧾 *Pedido:* ${order.id}\n👤 *Cliente:* ${order.customer.name}\n📱 *WhatsApp:* ${order.customer.phone}\n\n📦 *Itens:*\n${lines}\n\n💰 *Total:* ${money(order.total)}\n💳 *Pagamento:* ${order.payment}${pix}\n${order.customer.note?`\n📝 *Observação:* ${order.customer.note}\n`:''}\n📍 *Retirada:* Rua Aletes, 78, Pindorama — portão marrom.\n\n✅ Pedido registrado no site da Doce Encanto.\n💖 Mais que doce, é sentimento.`;
 }
 function finishWhats(){
   if(!cart.length){ mascotSay('Escolha uma trufinha antes 💖','point'); openCart(); return; }
+  const order = makeOrder();
   mascotSay('Pedido enviado! Uhuul 🎉','celebrate');
-  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`, '_blank');
+  cart=[]; save(); renderCart();
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage(order))}`, '_blank');
 }
-function setupPromo(){
-  const boxes = $$('.promoFlavor'); const btn = $('#addPromo');
-  function update(){
-    const checked = boxes.filter(b=>b.checked);
-    if(checked.length > 3){ checked.at(-1).checked = false; mascotSay('A promoção permite escolher 3 sabores 💕','point'); }
-    const now = boxes.filter(b=>b.checked);
-    btn.disabled = now.length !== 3;
-    btn.textContent = now.length === 3 ? 'Adicionar promoção por R$ 14,00' : `Escolha ${3-now.length} sabor(es)`;
-  }
-  boxes.forEach(b=>b.addEventListener('change', update));
-  btn.addEventListener('click', ()=>{
-    const flavors = boxes.filter(b=>b.checked).map(b=>b.value);
-    addItem({}, 1, `Promoção 3 trufas (${flavors.join(', ')})`, 14);
-    boxes.forEach(b=>b.checked=false); update(); openCart();
-  });
-  update();
+function renderPromo(){
+  const count = Object.values(promo).reduce((a,b)=>a+b,0);
+  Object.entries(promo).forEach(([flavor,qty])=>{ const el = document.getElementById(`promo-${flavor}`); if(el) el.textContent = qty; });
+  const btn = $('#addPromo');
+  btn.disabled = count !== 3;
+  btn.textContent = count === 3 ? 'Adicionar promoção por R$ 14,00' : `Escolha ${3-count} trufa(s)`;
 }
+function promoLabel(){ return Object.entries(promo).filter(([,q])=>q>0).map(([f,q])=>`${q} ${f}`).join(' + '); }
+function setupPromo(){ renderPromo(); }
 document.addEventListener('click', e=>{
   const add = e.target.closest('[data-add]');
   if(add){ const p = products.find(x=>x.id===add.dataset.add); flyToCart(add); setTimeout(()=>addItem(p), 260); }
+  const pinc = e.target.closest('[data-promo-inc]');
+  if(pinc){ const totalPromo = Object.values(promo).reduce((a,b)=>a+b,0); if(totalPromo < 3){ promo[pinc.dataset.promoInc]++; renderPromo(); } else mascotSay('A promoção já tem 3 trufas 💕','point'); }
+  const pdec = e.target.closest('[data-promo-dec]');
+  if(pdec){ const f=pdec.dataset.promoDec; if(promo[f] > 0){ promo[f]--; renderPromo(); } }
+  if(e.target.closest('#addPromo')){ addItem({}, 1, `Promoção 3 trufas (${promoLabel()})`, 14); promo = { Brigadeiro:0, Oreo:0, Maracujá:0, Coco:0 }; renderPromo(); openCart(); }
   if(e.target.closest('#openCart') || e.target.closest('#heroOrder')) openCart();
   if(e.target.closest('#closeCart')) closeCart();
   if(e.target.closest('#clearCart')){ cart=[]; save(); renderCart(); mascotSay('Carrinho limpinho! 🧹'); }

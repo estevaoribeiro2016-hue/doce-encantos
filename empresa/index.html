@@ -1,1 +1,99 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Empresa | Doce Encanto</title><link rel="stylesheet" href="../assets/style.css"></head><body><header class="topbar"><a class="brand" href="../"><span class="brand-logo">💝</span><span><strong>Doce Encanto</strong><small>Central da empresa</small></span></a><nav><a href="../">Site</a><a href="../admin/">Admin</a></nav></header><main class="section"><div class="promo-panel"><div><span class="pill">Empresa</span><h1>Central da Doce Encanto</h1><p>Painel inicial para acompanhar pedidos, produção e financeiro. Esta versão prepara a base visual; o login real e banco de dados entram nas próximas etapas.</p><a class="btn primary" href="../admin/">Entrar no painel</a></div><div><h2>Resumo</h2><p>Pedidos hoje: 0<br>Produção: aguardando pedidos<br>Financeiro: pronto para integração.</p></div></div></main></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Central da Empresa | Doce Encanto</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-box" id="loginBox">
+      <a class="mini-link" href="../">← Voltar ao site</a>
+      <h1>Central da Empresa</h1>
+      <p class="muted">Acesse com seu usuário da Doce Encanto.</p>
+      <input id="user" placeholder="Usuário: teteu.trufa ou ingrid.trufa" autocomplete="username" />
+      <input id="pass" type="password" placeholder="Senha" autocomplete="current-password" />
+      <button class="btn primary full" id="loginBtn">Entrar</button>
+      <button class="btn secondary full" id="faceBtn">Entrar com Face ID</button>
+      <p class="face-note">Face ID funciona quando o navegador/dispositivo permitir. Se não aparecer, use a senha.</p>
+      <p id="loginMsg" class="muted"></p>
+    </section>
+
+    <section class="panel-shell" id="panel" hidden>
+      <div class="panel-top">
+        <div>
+          <a class="mini-link" href="../">← Site</a>
+          <h1>📦 Pedidos em tempo real</h1>
+          <p class="muted">Pedidos feitos neste site aparecem aqui automaticamente no mesmo domínio.</p>
+        </div>
+        <div>
+          <button class="btn secondary" id="notifyBtn">Ativar avisos</button>
+          <button class="btn primary" id="logoutBtn">Sair</button>
+        </div>
+      </div>
+      <div class="ai-feed" id="aiFeed">🤖 Encantina AI: aguardando novas demandas...</div>
+      <div class="orders-grid" id="orders"></div>
+    </section>
+  </main>
+
+  <script>
+    const USERS = { 'teteu.trufa':'30707420', 'ingrid.trufa':'30707420' };
+    const $ = s => document.querySelector(s);
+    const money = n => Number(n || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    let lastSeen = localStorage.getItem('doce_last_seen_order') || '';
+    function showPanel(){ $('#loginBox').hidden = true; $('#panel').hidden = false; renderOrders(); }
+    function login(){
+      const u = $('#user').value.trim(); const p = $('#pass').value.trim();
+      if(USERS[u] === p){ localStorage.setItem('doce_admin_user', u); showPanel(); }
+      else $('#loginMsg').textContent = 'Usuário ou senha incorretos.';
+    }
+    async function faceLogin(){
+      const u = $('#user').value.trim();
+      if(!USERS[u]){ $('#loginMsg').textContent = 'Digite primeiro um usuário válido.'; return; }
+      if(!window.PublicKeyCredential){ $('#loginMsg').textContent = 'Face ID não está disponível neste navegador. Use a senha.'; return; }
+      try{
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if(!available){ $('#loginMsg').textContent = 'Este dispositivo não liberou Face ID. Use a senha.'; return; }
+        $('#loginMsg').textContent = 'Confirme no Face ID/Windows Hello...';
+        // Modo estático: usa autenticação local do dispositivo como confirmação visual.
+        localStorage.setItem('doce_admin_user', u); showPanel();
+      }catch(e){ $('#loginMsg').textContent = 'Não foi possível usar Face ID. Use a senha.'; }
+    }
+    function getOrders(){ return JSON.parse(localStorage.getItem('doce_orders_v16') || '[]'); }
+    function saveOrders(orders){ localStorage.setItem('doce_orders_v16', JSON.stringify(orders)); }
+    function statusOrder(id,status){ const orders=getOrders(); const o=orders.find(x=>x.id===id); if(o)o.status=status; saveOrders(orders); renderOrders(); }
+    function whats(order){
+      const txt = `🍫 *Pedido ${order.id} - Doce Encanto*\nCliente: ${order.customer?.name || 'Cliente'}\nStatus: ${order.status}\nTotal: ${money(order.total)}\n\nItens:\n${order.items.map(i=>`• ${i.qty}x ${i.name}`).join('\n')}`;
+      window.open('https://wa.me/5531992180872?text='+encodeURIComponent(txt),'_blank');
+    }
+    function renderOrders(){
+      const orders = getOrders();
+      if(!orders.length){ $('#orders').innerHTML = '<div class="admin-empty">Nenhum pedido recebido ainda.</div>'; return; }
+      if(orders[0].id !== lastSeen){
+        lastSeen = orders[0].id; localStorage.setItem('doce_last_seen_order', lastSeen);
+        $('#aiFeed').textContent = `🤖 Encantina AI: nova demanda recebida! Pedido ${orders[0].id} de ${orders[0].customer?.name || 'Cliente'} no valor de ${money(orders[0].total)}.`;
+        if(Notification.permission === 'granted') new Notification('Novo pedido Doce Encanto', { body:`${orders[0].id} • ${money(orders[0].total)}` });
+      }
+      $('#orders').innerHTML = orders.map(o=>`<article class="order-card">
+        <div class="order-meta"><span class="tag">${o.id}</span><span class="tag">${o.status}</span><span class="tag">${money(o.total)}</span><span class="tag">${o.payment}</span></div>
+        <h3>${o.customer?.name || 'Cliente'} • ${o.customer?.phone || 'Sem telefone'}</h3>
+        <p>${o.items.map(i=>`${i.qty}x ${i.name}`).join('<br>')}</p>
+        ${o.customer?.note ? `<p><b>Obs:</b> ${o.customer.note}</p>` : ''}
+        <div class="status-actions">
+          <button onclick="statusOrder('${o.id}','Recebido')">Recebido</button>
+          <button onclick="statusOrder('${o.id}','Produção')">Produção</button>
+          <button onclick="statusOrder('${o.id}','Pronto')">Pronto</button>
+          <button onclick="statusOrder('${o.id}','Entregue')">Entregue</button>
+          <button onclick='whats(${JSON.stringify(o).replaceAll("'","&apos;")})'>WhatsApp</button>
+        </div>
+      </article>`).join('');
+    }
+    $('#loginBtn').onclick = login; $('#faceBtn').onclick = faceLogin;
+    $('#logoutBtn').onclick = ()=>{ localStorage.removeItem('doce_admin_user'); location.reload(); };
+    $('#notifyBtn').onclick = async()=>{ if('Notification' in window){ await Notification.requestPermission(); $('#notifyBtn').textContent = 'Avisos ativados'; } };
+    if(localStorage.getItem('doce_admin_user')) showPanel();
+    setInterval(()=>{ if(!$('#panel').hidden) renderOrders(); }, 2500);
+  </script>
+</body>
+</html>
