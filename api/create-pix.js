@@ -4,9 +4,9 @@ module.exports = async function handler(req, res) {
   try {
     const body = await readJson(req);
     const orderId = String(body.orderId || '').trim();
-    const email = String(body.email || '').trim().toLowerCase();
+    const suppliedEmail = String(body.email || '').normalize('NFKC').replace(/^mailto:/i, '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').replace(/＠/g, '@').replace(/[。．]/g, '.').toLowerCase();
     if (!orderId) return json(res, 400, { ok: false, error: 'Pedido não informado.' });
-    if (!/^\S+@\S+\.\S+$/.test(email)) return json(res, 400, { ok: false, error: 'Informe um e-mail válido para gerar o Pix.' });
+
 
     const rows = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,customer_name,customer_phone,total,payment,mp_payment_id,mp_status,pix_qr_code,pix_qr_code_base64,pix_expires_at`);
     const order = Array.isArray(rows) ? rows[0] : null;
