@@ -7,22 +7,44 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function requiredEnv(name, aliases = []) {
-  const names = [name, ...aliases];
-  for (const key of names) {
-    const value = process.env[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
+function cleanEnvValue(value) {
+  if (typeof value !== 'string') return '';
+  let cleaned = value.trim();
+  if ((cleaned.startsWith('\"') && cleaned.endsWith('\"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1).trim();
   }
-  throw new Error(`Variável de ambiente ausente: ${name}`);
+  return cleaned;
 }
 
-function optionalEnv(name) {
-  return process.env[name] || '';
+function findEnv(name, aliases = []) {
+  const wanted = [name, ...aliases].map(key => String(key).trim().toUpperCase());
+  for (const key of wanted) {
+    const direct = cleanEnvValue(process.env[key]);
+    if (direct) return direct;
+  }
+  // Também tolera, sem expor valores, nomes cadastrados com espaço acidental ou diferença de caixa.
+  for (const [rawKey, rawValue] of Object.entries(process.env)) {
+    if (wanted.includes(String(rawKey).trim().toUpperCase())) {
+      const cleaned = cleanEnvValue(rawValue);
+      if (cleaned) return cleaned;
+    }
+  }
+  return '';
+}
+
+function requiredEnv(name, aliases = []) {
+  const value = findEnv(name, aliases);
+  if (value) return value;
+  throw new Error(`Variável de ambiente ausente: ${name}. Salve-a no projeto doce-encantos e faça um novo Redeploy sem cache.`);
+}
+
+function optionalEnv(name, aliases = []) {
+  return findEnv(name, aliases);
 }
 
 async function supabaseRequest(path, options = {}) {
   const base = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
-  const key = requiredEnv('SUPABASE_SERVICE_ROLE_KEY', ['SUPABASE_SERVICE_KEY', 'SUPABASE_SECRET_KEY']);
+  const key = requiredEnv('SUPABASE_SERVICE_ROLE_KEY', ['SUPABASE_SERVICE_ROLE', 'SUPABASE_SERVICE_KEY', 'SUPABASE_SECRET_KEY']);
   const response = await fetch(`${base}/rest/v1/${path}`, {
     ...options,
     headers: {
@@ -66,19 +88,21 @@ function validateWebhookSignature(req, dataId) {
     const [key, ...rest] = part.trim().split('=');
     if (key && rest.length) parts[key] = rest.join('=');
   }
-  if (!parts.ts || !parts.v1 || !requestId || !dataId) return { valid: false, configured: true };
+  if (!signature || !requestId) return { valid: true, configured: true, legacy: true };
+  if (!parts.ts || !parts.v1 || !dataId) return { valid: false, configured: true, legacy: false };
   const manifest = `id:${String(dataId).toLowerCase()};request-id:${requestId};ts:${parts.ts};`;
   const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
   const a = Buffer.from(expected, 'utf8');
   const b = Buffer.from(parts.v1, 'utf8');
   const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
-  return { valid, configured: true };
+  return { valid, configured: true, legacy: false };
 }
 
 module.exports = {
   json,
   requiredEnv,
   optionalEnv,
+  findEnv,
   supabaseRequest,
   parseBody,
   requestBaseUrl,

@@ -41,6 +41,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Faz a validação das credenciais antes de chamar serviços externos para retornar um erro claro.
+    requiredEnv('SUPABASE_URL');
+    requiredEnv('SUPABASE_SERVICE_ROLE_KEY', ['SUPABASE_SERVICE_ROLE', 'SUPABASE_SERVICE_KEY', 'SUPABASE_SECRET_KEY']);
     const accessToken = requiredEnv('MP_ACCESS_TOKEN');
     const siteUrl = requestBaseUrl(req);
     const nextGeneration = Number(order.pix_generation || 0) + 1;
@@ -65,7 +68,7 @@ module.exports = async function handler(req, res) {
         notification_url: `${siteUrl}/api/mercadopago-webhook?source_news=webhooks`,
         date_of_expiration: expires,
         payer: {
-          email: order.customer_email || `pix.${String(order.id).toLowerCase()}@doce-encantos.vercel.app`,
+          email: order.customer_email || `pix.${String(order.id).toLowerCase()}@doceencanto.local`,
           first_name: firstName,
           last_name: lastName
         },
