@@ -6,8 +6,9 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseBody(req);
     const dataId = req.query?.['data.id'] || req.query?.id || body?.data?.id || body?.id;
-    const type = req.query?.type || body?.type || body?.action?.split('.')?.[0];
-    if (!dataId || (type && type !== 'payment')) {
+    const type = req.query?.type || req.query?.topic || body?.type || body?.topic || body?.action?.split('.')?.[0];
+    const normalizedType = String(type || '').toLowerCase();
+    if (!dataId || (normalizedType && !['payment','payments'].includes(normalizedType))) {
       return json(res, 200, { received: true, ignored: true });
     }
 
