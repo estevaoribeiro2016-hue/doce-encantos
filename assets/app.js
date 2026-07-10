@@ -22,7 +22,7 @@ const ADMIN_USERS = {
 
 
 // ===============================
-// V50 REAL — SUPABASE / TEMPO REAL
+// V51 ESTÁVEL — SUPABASE / TEMPO REAL
 // ===============================
 let supabaseClient=null;
 let supabaseReady=false;
@@ -170,72 +170,143 @@ function addItem(id, btn) { const p = productById(id); if (!p || p.stock <= 0) r
 
 function freeShippingProgress() { const sub = calc(), missing = Math.max(0, 30 - sub), pct = Math.min(100, (sub / 30) * 100); if (sub >= 30) return `<div class="freeShip unlocked"><b>🎉 Frete grátis desbloqueado!</b><small>Seu pedido passou de R$30,00.</small></div>`; return `<div class="freeShip"><b>🎁 Frete grátis acima de R$30,00</b><div class="freeBar"><i style="width:${pct}%"></i></div><small>Faltam ${BRL(missing)} para ganhar frete grátis.</small></div>`; }
 function deliveryFee() { const f = $('[name=fulfillment]:checked')?.value || 'retirada'; if (f !== 'entrega') return 0; if (calc() >= 30) return 0; if (deliveryInfo && deliveryInfo.applied && typeof deliveryInfo.fee === 'number') return deliveryInfo.fee; return 0; }
-function applyDeliveryByRegion(showMessage = true) { const bairro = $('#bairro')?.value?.trim() || ''; if (!bairro) return false; const sub = calc(), baseFee = deliveryFeeByRegion(bairro), region = deliveryFeeLabel(bairro), fee = sub >= 30 ? 0 : baseFee; deliveryInfo = { type: 'entrega', fee, status: fee === 0 ? 'Frete grátis aplicado' : 'Frete por bairro aplicado', method: DELIVERY_MODE, bairro, region, applied: true, baseFee }; const box = $('#deliveryQuote'); if (box) { box.classList.remove('hidden'); box.innerHTML = `<b>🛵 Entrega por ${DELIVERY_MODE}</b><br><b>📍 Bairro: ${bairro}</b><br><b>🚚 Frete: ${fee === 0 ? '🎉 GRÁTIS' : BRL(fee)}</b><br><b>💰 Total com entrega: ${BRL(sub + fee)}</b><br><small>${fee === 0 ? 'Pedido acima de R$30,00.' : region + '. Frete aplicado por bairro.'}</small>${freeShippingProgress()}`; } if (showMessage) say(fee === 0 ? `Parabéns! Você desbloqueou frete grátis para ${bairro}. Total: ${BRL(sub)} 🎉` : `Frete para ${bairro}: ${BRL(fee)}. Total com entrega: ${BRL(sub + fee)} 💖`); updateTotals(); return true; }
-function updateTotals() { const sub = calc(), isDelivery = $('[name=fulfillment]:checked')?.value === 'entrega'; if (isDelivery && $('#bairro')?.value?.trim() && !deliveryInfo.applied) applyDeliveryByRegion(false); const fee = isDelivery ? deliveryFee() : 0, total = sub + fee; if ($('#subtotal')) $('#subtotal').textContent = BRL(sub); if ($('#frete')) $('#frete').textContent = isDelivery ? (fee === 0 && sub >= 30 ? 'Grátis' : BRL(fee)) : BRL(0); if ($('#grandTotal')) $('#grandTotal').textContent = BRL(total); if ($('#distanceLabel')) $('#distanceLabel').textContent = isDelivery ? DELIVERY_MODE : 'Retirada'; if ($('#cartTotal')) $('#cartTotal').textContent = BRL(sub); if ($('#freeShipSummary')) $('#freeShipSummary').innerHTML = isDelivery ? freeShippingProgress() : ''; const box = $('#deliveryQuote'); if (isDelivery && deliveryInfo.applied && box && !box.classList.contains('hidden')) applyDeliveryByRegion(false); }
+function refreshDeliveryQuote(showMessage = false) {
+  const bairro = $('#bairro')?.value?.trim() || '';
+  const box = $('#deliveryQuote');
+  if (!bairro) {
+    deliveryInfo = { type: 'entrega', fee: 0, status: 'Aguardando bairro', method: DELIVERY_MODE, applied: false, region: '' };
+    if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+    return false;
+  }
+  const sub = calc();
+  const baseFee = deliveryFeeByRegion(bairro);
+  const region = deliveryFeeLabel(bairro);
+  const fee = sub >= 30 ? 0 : baseFee;
+  deliveryInfo = { type: 'entrega', fee, status: fee === 0 ? 'Frete grátis aplicado' : 'Frete por bairro aplicado', method: DELIVERY_MODE, bairro, region, applied: true, baseFee };
+  if (box) {
+    box.classList.remove('hidden');
+    box.innerHTML = `<b>🛵 Entrega por ${DELIVERY_MODE}</b><br><b>📍 Bairro: ${bairro}</b><br><b>🚚 Frete: ${fee === 0 ? '🎉 GRÁTIS' : BRL(fee)}</b><br><b>💰 Total com entrega: ${BRL(sub + fee)}</b><br><small>${fee === 0 ? 'Pedido a partir de R$30,00.' : region + '. Frete aplicado por bairro.'}</small>${freeShippingProgress()}`;
+  }
+  if (showMessage) say(fee === 0 ? `Parabéns! Você desbloqueou frete grátis para ${bairro}. Total: ${BRL(sub)} 🎉` : `Frete para ${bairro}: ${BRL(fee)}. Total com entrega: ${BRL(sub + fee)} 💖`);
+  return true;
+}
+function applyDeliveryByRegion(showMessage = true) {
+  const applied = refreshDeliveryQuote(showMessage);
+  updateTotals({ skipQuoteRefresh: true });
+  return applied;
+}
+function updateTotals(options = {}) {
+  const sub = calc();
+  const isDelivery = $('[name=fulfillment]:checked')?.value === 'entrega';
+  if (isDelivery && !options.skipQuoteRefresh) refreshDeliveryQuote(false);
+  const fee = isDelivery ? deliveryFee() : 0;
+  const total = sub + fee;
+  if ($('#subtotal')) $('#subtotal').textContent = BRL(sub);
+  if ($('#frete')) $('#frete').textContent = isDelivery ? (fee === 0 && sub >= 30 ? 'Grátis' : BRL(fee)) : BRL(0);
+  if ($('#grandTotal')) $('#grandTotal').textContent = BRL(total);
+  if ($('#distanceLabel')) $('#distanceLabel').textContent = isDelivery ? DELIVERY_MODE : 'Retirada';
+  if ($('#cartTotal')) $('#cartTotal').textContent = BRL(sub);
+  if ($('#freeShipSummary')) $('#freeShipSummary').innerHTML = isDelivery ? freeShippingProgress() : '';
+}
 function renderCart() { const totalQty = cart.reduce((a, i) => a + (i.qty || 0), 0); if ($('#cartCount')) $('#cartCount').textContent = totalQty; const html = cart.length ? cart.map((i, idx) => `<div class="cartRow"><div><b>${i.emoji} ${i.name}</b><br><small>${i.flavors ? i.flavors.map(f => f.name).join(', ') + (i.qty > 1 ? ` • ${i.qty} promoções iguais` : '') : ''}</small></div><div class="qty"><button data-dec="${idx}">-</button><b>${i.qty}</b><button data-inc="${idx}">+</button></div></div>`).join('') : '<p>Seu carrinho está vazio.</p>'; if ($('#cartItems')) $('#cartItems').innerHTML = html; if ($('#checkoutItems')) $('#checkoutItems').innerHTML = html; $$('[data-dec]').forEach(b => b.onclick = () => { const i = cart[Number(b.dataset.dec)]; if (!i) return; i.qty--; if (i.qty <= 0) cart.splice(Number(b.dataset.dec), 1); save(); renderCart(); renderPromo(); }); $$('[data-inc]').forEach(b => b.onclick = () => { const i = cart[Number(b.dataset.inc)]; if (!i) return; if (i.flavors) { if (!canAddPromoBatch(i, 1)) return say('Estoque insuficiente para adicionar mais uma promoção igual.'); i.qty++; } else { if (!canAddProduct(i.id, 1)) return say(`Limite de ${i.name} atingido.`); i.qty++; } save(); renderCart(); renderPromo(); }); updateTotals(); }
 
 function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
 function maskCep(v) { v = onlyDigits(v).slice(0, 8); return v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v; }
 
 const LOCAL_CEP_FALLBACK = {
+  '30865060': { logradouro: 'Rua Macarena', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
   '30865130': { logradouro: 'Rua Arauto', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
   '30865180': { logradouro: 'Rua Aletes', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
   '30865300': { logradouro: 'Rua Aredius', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' }
 };
-function applyCepData(data, source='ViaCEP') {
-  if ($('#rua')) $('#rua').value = data.logradouro || '';
-  if ($('#bairro')) $('#bairro').value = data.bairro || '';
-  if ($('#cidade')) $('#cidade').value = data.localidade || '';
-  if ($('#estado')) $('#estado').value = data.uf || '';
+let cepLookupSequence = 0;
+let lastResolvedCep = '';
+
+function applyCepData(data, source = 'ViaCEP', rawCep = '') {
+  const street = data.logradouro || data.street || '';
+  const neighborhood = data.bairro || data.neighborhood || '';
+  const city = data.localidade || data.city || '';
+  const state = data.uf || data.state || '';
+  if ($('#rua')) $('#rua').value = street;
+  if ($('#bairro')) $('#bairro').value = neighborhood;
+  if ($('#cidade')) $('#cidade').value = city;
+  if ($('#estado')) $('#estado').value = state;
+  lastResolvedCep = rawCep || onlyDigits($('#cep')?.value || '');
   const status = $('#cepStatus');
   if (status) {
-    status.textContent = source === 'local' ? 'Endereço reconhecido pela base local. Complete o número e finalize normalmente.' : 'Endereço preenchido automaticamente. Complete o número e finalize normalmente.';
+    const complete = !!street;
+    status.textContent = source === 'local'
+      ? (complete ? 'Endereço reconhecido pela base local. Complete o número.' : 'Bairro reconhecido. Complete a rua e o número.')
+      : 'Endereço preenchido automaticamente. Complete o número.';
     status.className = 'cepStatus ok';
   }
-  $('#numero')?.focus();
-  if ($('#bairro')?.value) applyDeliveryByRegion(false);
+  if (neighborhood) refreshDeliveryQuote(false);
+  updateTotals({ skipQuoteRefresh: true });
+  setTimeout(() => $('#numero')?.focus(), 60);
 }
 function localCepFallback(raw) {
   if (LOCAL_CEP_FALLBACK[raw]) return LOCAL_CEP_FALLBACK[raw];
   if (raw.startsWith('30865')) return { logradouro: '', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' };
   return null;
 }
-async function lookupCep() {
-  const cepEl = $('#cep');
-  if (!cepEl) return;
-  const status = $('#cepStatus'), raw = onlyDigits(cepEl.value);
-  cepEl.value = maskCep(cepEl.value);
-  resetDeliveryQuote();
-  if (raw.length < 8) {
-    if (status) { status.textContent = 'Digite o CEP para preencher a rua automaticamente.'; status.className = 'cepStatus'; }
-    return;
-  }
-  if (status) { status.textContent = 'Buscando endereço pelo CEP...'; status.className = 'cepStatus loading'; }
+async function fetchJsonWithTimeout(url, timeoutMs = 6500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4500);
-    const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
     clearTimeout(timer);
-    if (!res.ok) throw new Error('ViaCEP indisponível');
-    const data = await res.json();
-    if (data.erro) throw new Error('CEP não encontrado');
-    applyCepData(data, 'viacep');
-  } catch (e) {
-    const fallback = localCepFallback(raw);
-    if (fallback) {
-      applyCepData(fallback, 'local');
-      return;
-    }
-    if (status) { status.textContent = 'Não foi possível consultar o CEP agora. Preencha manualmente e clique em Aplicar frete por bairro.'; status.className = 'cepStatus error'; }
   }
 }
-
+async function lookupCep(force = false) {
+  const cepEl = $('#cep');
+  if (!cepEl) return;
+  const status = $('#cepStatus');
+  const raw = onlyDigits(cepEl.value);
+  cepEl.value = maskCep(cepEl.value);
+  if (raw.length < 8) {
+    if (status) { status.textContent = 'Digite os 8 números do CEP.'; status.className = 'cepStatus'; }
+    return;
+  }
+  if (!force && raw === lastResolvedCep && $('#bairro')?.value?.trim()) return;
+  const requestId = ++cepLookupSequence;
+  if (status) { status.textContent = 'Buscando endereço pelo CEP...'; status.className = 'cepStatus loading'; }
+  let data = null;
+  let source = '';
+  try {
+    const via = await fetchJsonWithTimeout(`https://viacep.com.br/ws/${raw}/json/`);
+    if (!via?.erro) { data = via; source = 'ViaCEP'; }
+  } catch (e) { console.warn('ViaCEP falhou:', e); }
+  if (!data) {
+    try {
+      const brasil = await fetchJsonWithTimeout(`https://brasilapi.com.br/api/cep/v1/${raw}`);
+      if (brasil?.cep) { data = brasil; source = 'BrasilAPI'; }
+    } catch (e) { console.warn('BrasilAPI falhou:', e); }
+  }
+  if (requestId !== cepLookupSequence) return;
+  if (data) {
+    applyCepData(data, source, raw);
+    return;
+  }
+  const fallback = localCepFallback(raw);
+  if (fallback) {
+    applyCepData(fallback, 'local', raw);
+    return;
+  }
+  lastResolvedCep = '';
+  if (status) {
+    status.textContent = 'Não foi possível consultar este CEP agora. Confira o CEP ou preencha o endereço manualmente.';
+    status.className = 'cepStatus error';
+  }
+}
 
 function resetDeliveryQuote() {
   deliveryInfo = { type: $('[name=fulfillment]:checked')?.value || 'retirada', fee: 0, status: 'Não aplicado', method: deliveryInfo?.method || DELIVERY_MODE, applied: false, region: '' };
   const box = $('#deliveryQuote');
   if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
-  updateTotals();
+  updateTotals({ skipQuoteRefresh: true });
 }
 function calculateDeliveryDistance() {
   return applyDeliveryByRegion(true);
@@ -380,9 +451,25 @@ async function init() {
   $$('.chips button').forEach(b => b.onclick = () => { $('#aiInput').value = b.dataset.q; $('#aiForm').dispatchEvent(new Event('submit')); });
   $('#loginBtn').onclick = loginAdmin; $('#faceRegister') && ($('#faceRegister').onclick = registerFaceId);
   $('#themeToggle').onclick = () => { document.body.classList.toggle('dark'); $('#themeToggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
-  if ($('#cep')) { let cepTimer=null; $('#cep').addEventListener('input', () => { $('#cep').value = maskCep($('#cep').value); resetDeliveryQuote(); clearTimeout(cepTimer); if (onlyDigits($('#cep').value).length === 8) cepTimer = setTimeout(lookupCep, 250); }); $('#cep').addEventListener('blur', lookupCep); $('#cep').addEventListener('change', lookupCep); }
-  ['rua', 'cidade', 'estado', 'numero'].forEach(id => { $('#' + id)?.addEventListener('input', () => updateTotals()); });
-  ['rua','numero','bairro','cidade','estado'].forEach(id => $('#' + id)?.addEventListener('input', () => { if ($('[name=fulfillment]:checked')?.value === 'entrega' && $('#bairro')?.value.trim()) applyDeliveryByRegion(false); else resetDeliveryQuote(); }));
+  if ($('#cep')) {
+    let cepTimer = null;
+    $('#cep').addEventListener('input', () => {
+      const raw = onlyDigits($('#cep').value);
+      $('#cep').value = maskCep($('#cep').value);
+      if (raw !== lastResolvedCep) {
+        lastResolvedCep = '';
+        const status = $('#cepStatus');
+        if (status) { status.textContent = raw.length === 8 ? 'Aguarde, consultando o CEP...' : 'Digite os 8 números do CEP.'; status.className = 'cepStatus'; }
+      }
+      clearTimeout(cepTimer);
+      if (raw.length === 8) cepTimer = setTimeout(() => lookupCep(false), 700);
+    });
+    $('#cep').addEventListener('blur', () => { if (onlyDigits($('#cep').value).length === 8) lookupCep(false); });
+  }
+  ['rua','numero','bairro','cidade','estado'].forEach(id => $('#' + id)?.addEventListener('input', () => {
+    if ($('[name=fulfillment]:checked')?.value === 'entrega' && $('#bairro')?.value.trim()) refreshDeliveryQuote(false);
+    updateTotals({ skipQuoteRefresh: true });
+  }));
   $('#calcDistance')?.addEventListener('click', calculateDeliveryDistance);
   enableEnterToNextField();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { });
