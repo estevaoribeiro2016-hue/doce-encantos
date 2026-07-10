@@ -36,7 +36,7 @@ async function initSupabase(){if(!window.supabase||!isSupabaseConfigured()){cons
 function supabaseStatusHtml(){return supabaseReady?'<span class="pill ok">🟢 Banco online conectado</span>':'<span class="pill danger">🔴 Banco online não configurado</span>';}
 async function loadPublicInventory(){if(!supabaseClient)return;const [inv,zones]=await Promise.all([supabaseClient.from('inventory').select('*').order('flavor_id'),supabaseClient.from('delivery_zones').select('*').eq('active',true).order('name')]);if(inv.error)throw inv.error;if(zones.error)console.warn(zones.error);if(inv.data?.length){inventory=inv.data.map(r=>({id:r.flavor_id,stock:Number(r.stock||0),min:Number(r.min_stock||0)}));products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));}deliveryZones=(zones.data||[]).map(z=>({id:z.id,name:z.name,normalizedName:z.normalized_name,fee:Number(z.fee||0),active:!!z.active,latitude:z.latitude,longitude:z.longitude}));saveLocalOnly();}
 async function loadAdminSupabaseState(){if(!supabaseClient)return;const [o,m,z]=await Promise.all([supabaseClient.from('orders').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('delivery_zones').select('*').order('name')]);if(o.error)throw o.error;if(m.error)throw m.error;if(z.error)throw z.error;orders=(o.data||[]).map(orderFromSupabase);stockMoves=(m.data||[]).map(moveFromSupabase);deliveryZones=(z.data||[]).map(x=>({id:x.id,name:x.name,normalizedName:x.normalized_name,fee:Number(x.fee||0),active:!!x.active,latitude:x.latitude,longitude:x.longitude}));deliveryZonesDraft=deliveryZones.map(x=>({...x}));saveLocalOnly();}
-function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,createdAt:r.created_at,readyAt:r.ready_at?new Date(r.ready_at).toLocaleString('pt-BR'):'',deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',customerEmail:r.customer_email||'',mpPaymentId:r.mp_payment_id||'',mpStatus:r.mp_status||'',paymentPaidAt:r.payment_paid_at||'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
+function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,createdAt:r.created_at,readyAt:r.ready_at?new Date(r.ready_at).toLocaleString('pt-BR'):'',deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
 function moveFromSupabase(r){return{id:r.id,date:new Date(r.created_at).toLocaleString('pt-BR'),type:r.type,productId:r.flavor_id,productName:r.flavor_name,emoji:r.emoji,qty:Number(r.qty||0),reason:r.reason,orderId:r.order_id||''};}
 function subscribeInventoryRealtime(){if(!supabaseClient)return;supabaseClient.channel('public-inventory-v50').on('postgres_changes',{event:'*',schema:'public',table:'inventory'},async()=>{await loadPublicInventory();renderProducts();renderPromo();renderCart();if(currentAdmin)renderAdmin();}).subscribe();}
 function subscribeAdminRealtime(){if(!supabaseClient)return;if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);realtimeChannel=supabaseClient.channel('admin-v50').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'stock_movements'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'delivery_zones'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).subscribe();}
@@ -372,6 +372,11 @@ function buildWhatsappMessage(order) {
   lines.push('💳 *Pagamento*');
   lines.push(`Forma: ${order.paymentLabel}`);
   lines.push(order.payment === 'pix' ? 'Status: Aguardando confirmação do Pix' : 'Status: A combinar na retirada');
+  if (order.payment === 'pix') {
+    lines.push('Chave Pix: 3192180872');
+    lines.push('Titular: Ingrid Emanuelle Damasceno');
+    lines.push('Envie o comprovante por este WhatsApp para confirmar o pagamento.');
+  }
   lines.push('');
   lines.push('📌 *Status inicial:* Recebido');
   return lines.join('\n');
@@ -382,84 +387,17 @@ function normalizePaymentLabel(v) {
   if (v === 'cartao') return 'Cartão';
   return v || 'Não informado';
 }
-let pixStatusTimer=null;
-function normalizeCustomerEmail(v){
-  return String(v||'').normalize('NFKC').replace(/^mailto:/i,'').replace(/[\s\u200B-\u200D\uFEFF]+/g,'').replace(/＠/g,'@').replace(/[。．]/g,'.').toLowerCase();
-}
-function validEmail(v){return /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(normalizeCustomerEmail(v));}
-function showPixModal(order){
-  $('#pixModal')?.classList.remove('hidden');
-  if($('#pixOrderSummary')) $('#pixOrderSummary').textContent=`Pedido #${order.id} • ${BRL(order.total)}`;
-  $('#pixLoading')?.classList.remove('hidden');
-  $('#pixError')?.classList.add('hidden');
-  $('#pixResult')?.classList.add('hidden');
-}
-function hidePixModal(){
-  $('#pixModal')?.classList.add('hidden');
-  if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}
-}
-function showPixError(message, order, email){
-  $('#pixLoading')?.classList.add('hidden');
-  $('#pixResult')?.classList.add('hidden');
-  const box=$('#pixError'); if(!box)return;
-  box.classList.remove('hidden');
-  box.innerHTML=`<b>O pedido foi salvo, mas o Pix não foi gerado.</b><br>${escapeHtml(message)}<button id="retryPix" class="secondary full" type="button">Tentar gerar novamente</button>`;
-  $('#retryPix').onclick=()=>generatePix(order,email);
-}
-async function requestJson(url, options={}){
-  const response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok||data.ok===false)throw new Error(data.error||`Erro HTTP ${response.status}`);
-  return data;
-}
-async function generatePix(order,email){
-  showPixModal(order);
-  try{
-    const data=await requestJson('/api/create-pix',{method:'POST',body:JSON.stringify({orderId:order.id,email})});
-    $('#pixLoading')?.classList.add('hidden'); $('#pixError')?.classList.add('hidden'); $('#pixResult')?.classList.remove('hidden');
-    $('#pixDynamicQr').src=`data:image/png;base64,${data.qrCodeBase64}`;
-    $('#pixDynamicCode').value=data.qrCode||'';
-    $('#pixPaymentStatus').textContent='Aguardando pagamento...';
-    $('#copyDynamicPix').onclick=async()=>{try{await navigator.clipboard.writeText(data.qrCode||'');alert('Pix copia e cola copiado!');}catch{ $('#pixDynamicCode').select();document.execCommand('copy');alert('Pix copia e cola copiado!');}};
-    $('#checkPixStatus').onclick=()=>checkPixPayment(order.id,true);
-    if(pixStatusTimer)clearInterval(pixStatusTimer);
-    pixStatusTimer=setInterval(()=>checkPixPayment(order.id,false),5000);
-  }catch(e){console.error(e);showPixError(e.message||'Não foi possível gerar o Pix.',order,email);}
-}
-async function checkPixPayment(orderId,notify){
-  try{
-    const data=await requestJson(`/api/payment-status?orderId=${encodeURIComponent(orderId)}`);
-    const el=$('#pixPaymentStatus');
-    if(data.paid){
-      if(el){el.textContent='✅ Pagamento aprovado!';el.classList.add('paid');}
-      if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}
-      confetti();jump('Pix aprovado! Seu pedido já está confirmado. 💖');
-      if(notify)alert('Pagamento aprovado!');
-    }else if(el){el.textContent=data.status==='pending'?'Aguardando pagamento...':`Status: ${data.status||'aguardando'}`;}
-  }catch(e){if(notify)alert(e.message||'Não foi possível consultar o pagamento.');}
-}
 async function finish(){
-  if(!supabaseReady)return alert('O banco online ainda não está configurado.');
+  if(!supabaseReady)return alert('O banco online ainda não está configurado. Siga o README da V50 REAL.');
   if(!cart.length)return alert('Seu carrinho está vazio.');
-  const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim(),customerEmail=normalizeCustomerEmail($('#customerEmail')?.value||'');
+  const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim();
   if(!customerName){$('#customerName')?.focus();return alert('Informe o nome do cliente.');}
   if(!customerPhone){$('#customerPhone')?.focus();return alert('Informe o telefone/WhatsApp do cliente.');}
   const fulfillment=$('[name=fulfillment]:checked')?.value||'retirada';let payment=$('#payment')?.value||'pix';let address=null;
   if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
   const btn=$('#finishOrder');btn.disabled=true;btn.textContent='Finalizando...';
-  try{
-    const payload={customerName,customerPhone,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};
-    const {data,error}=await supabaseClient.rpc('create_order',{p_payload:payload});if(error)throw error;
-    const order=orderFromSupabase(data);orders.unshift(order);cart=[];save();await loadPublicInventory();renderCart();renderProducts();renderPromo();confetti();
-    if(payment==='pix'){
-      jump('Pedido salvo! Agora gere e pague o Pix para confirmar. 💖');
-      await generatePix(order,customerEmail);
-    }else{
-      jump('Pedido salvo online! Teteu e Ingrid verão em tempo real. 💖');
-      window.open(`https://wa.me/553192180872?text=${encodeURIComponent(buildWhatsappMessage(order))}`,'_blank');
-      location.hash='empresa';
-    }
-  }catch(e){console.error(e);alert(e.message||'Não foi possível finalizar o pedido.');}
+  try{const payload={customerName,customerPhone,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};const {data,error}=await supabaseClient.rpc('create_order',{p_payload:payload});if(error)throw error;const order=orderFromSupabase(data);orders.unshift(order);cart=[];save();await loadPublicInventory();renderCart();renderProducts();renderPromo();confetti();jump('Pedido salvo! Agora confirme pelo WhatsApp. 💖');const whatsappUrl=`https://wa.me/553192180872?text=${encodeURIComponent(buildWhatsappMessage(order))}`;window.location.href=whatsappUrl;}
+  catch(e){console.error(e);alert(e.message||'Não foi possível finalizar o pedido.');}
   finally{btn.disabled=false;btn.textContent='Finalizar pedido';}
 }
 function enableEnterToNextField() {
@@ -565,8 +503,7 @@ async function init() {
   $('#goCheckout').onclick = () => { $('#cartDrawer').classList.remove('open'); $('#overlay').classList.remove('show'); };
   $$('[name=fulfillment]').forEach(r => r.onchange = () => { const entrega = $('[name=fulfillment]:checked').value === 'entrega'; $('#addressBox').classList.toggle('hidden', !entrega); $('#storeAddress').classList.toggle('hidden', entrega); resetDeliveryQuote(); if (entrega) { $('#payment').value = 'pix'; pointPix('Para entrega, usamos Pix e envio por Uber Moto. Informe o endereço para aplicar o frete por bairro. Frete grátis acima de R$30 💖'); } renderCart(); });
   $('#payment').onchange = () => { if ($('[name=fulfillment]:checked').value === 'entrega' && $('#payment').value !== 'pix') { $('#payment').value = 'pix'; alert('Para entrega, somente Pix.'); } if ($('#payment').value === 'pix') pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱'); };
-  $('#pixModalClose')?.addEventListener('click',hidePixModal);
-  $('#pixModal')?.addEventListener('click',e=>{if(e.target===$('#pixModal'))hidePixModal();});
+  $('#copyPix').onclick = async () => { const value=$('#pixCode')?.value||'3192180872'; try { await navigator.clipboard.writeText(value); alert('Chave Pix copiada: 3192180872'); } catch { $('#pixCode')?.select(); document.execCommand('copy'); alert('Chave Pix copiada: 3192180872'); } };
   $('#finishOrder').onclick = finish; $('#addPromo').onclick = addPromo; $('#resetPromo').onclick = () => { promo = []; renderPromo(); }; $('#suggestPromo').onclick = suggestPromo;
   $('#aiForm').onsubmit = e => { e.preventDefault(); const q = $('#aiInput').value.trim(); if (!q) return; addChat(q, 'user'); const a = aiAnswer(q); setTimeout(() => { addChat(a); say(a.split('.')[0] + '.'); }, 160); $('#aiInput').value = ''; };
   $$('.chips button').forEach(b => b.onclick = () => { $('#aiInput').value = b.dataset.q; $('#aiForm').dispatchEvent(new Event('submit')); });
