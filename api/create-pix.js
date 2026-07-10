@@ -7,6 +7,11 @@ module.exports = async function handler(req, res) {
     const suppliedEmail = String(body.email || '').normalize('NFKC').replace(/^mailto:/i, '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').replace(/＠/g, '@').replace(/[。．]/g, '.').toLowerCase();
     if (!orderId) return json(res, 400, { ok: false, error: 'Pedido não informado.' });
 
+    // O Mercado Pago exige um e-mail sintaticamente válido. Se o cliente não
+    // informar um, criamos um endereço técnico exclusivo para o pedido.
+    const emailIsValid = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(suppliedEmail);
+    const safeOrderId = orderId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50) || 'pedido';
+    const email = emailIsValid ? suppliedEmail : `pagamento.${safeOrderId}@doceencanto.com.br`;
 
     const rows = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,customer_name,customer_phone,total,payment,mp_payment_id,mp_status,pix_qr_code,pix_qr_code_base64,pix_expires_at`);
     const order = Array.isArray(rows) ? rows[0] : null;

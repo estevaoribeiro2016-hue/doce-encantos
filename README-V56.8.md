@@ -1,4 +1,4 @@
-# Doce Encanto V56.8
+# Doce Encanto V56.9
 
 Correção definitiva da validação de e-mail no Pix.
 
