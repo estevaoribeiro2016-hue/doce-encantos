@@ -20,6 +20,25 @@ const ADMIN_USERS = {
   'ingrid.trufa': { name: 'Ingrid', role: 'Administradora', fullAccess: true }
 };
 
+
+// ===============================
+// V50 REAL — SUPABASE / TEMPO REAL
+// ===============================
+let supabaseClient=null;
+let supabaseReady=false;
+let supabaseStatus='não configurado';
+let realtimeChannel=null;
+const ADMIN_EMAILS={'teteu.trufa':'teteu.trufa@doceencanto.local','ingrid.trufa':'ingrid.trufa@doceencanto.local'};
+function isSupabaseConfigured(){const c=window.DoceEncantoSupabaseConfig||{},k=c.publishableKey||c.anonKey;return !!(c.url&&k&&!String(c.url).includes('COLE_AQUI')&&!String(k).includes('COLE_AQUI'));}
+async function initSupabase(){if(!window.supabase||!isSupabaseConfigured()){console.warn('Supabase não configurado.');return;}try{const c=window.DoceEncantoSupabaseConfig;supabaseClient=window.supabase.createClient(c.url,c.publishableKey||c.anonKey,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false}});await loadPublicInventory();subscribeInventoryRealtime();supabaseReady=true;supabaseStatus='online';}catch(e){supabaseStatus='erro';console.error(e);}}
+function supabaseStatusHtml(){return supabaseReady?'<span class="pill ok">🟢 Banco online conectado</span>':'<span class="pill danger">🔴 Banco online não configurado</span>';}
+async function loadPublicInventory(){if(!supabaseClient)return;const {data,error}=await supabaseClient.from('inventory').select('*').order('flavor_id');if(error)throw error;if(data?.length){inventory=data.map(r=>({id:r.flavor_id,stock:Number(r.stock||0),min:Number(r.min_stock||1)}));products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));saveLocalOnly();}}
+async function loadAdminSupabaseState(){if(!supabaseClient)return;const [o,m]=await Promise.all([supabaseClient.from('orders').select('*').order('created_at',{ascending:false}).limit(500),supabaseClient.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(500)]);if(o.error)throw o.error;if(m.error)throw m.error;orders=(o.data||[]).map(orderFromSupabase);stockMoves=(m.data||[]).map(moveFromSupabase);saveLocalOnly();}
+function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
+function moveFromSupabase(r){return{id:r.id,date:new Date(r.created_at).toLocaleString('pt-BR'),type:r.type,productId:r.flavor_id,productName:r.flavor_name,emoji:r.emoji,qty:Number(r.qty||0),reason:r.reason,orderId:r.order_id||''};}
+function subscribeInventoryRealtime(){if(!supabaseClient)return;supabaseClient.channel('public-inventory-v50').on('postgres_changes',{event:'*',schema:'public',table:'inventory'},async()=>{await loadPublicInventory();renderProducts();renderPromo();renderCart();if(currentAdmin)renderAdmin();}).subscribe();}
+function subscribeAdminRealtime(){if(!supabaseClient)return;if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);realtimeChannel=supabaseClient.channel('admin-v50').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'stock_movements'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).subscribe();}
+function saveLocalOnly(){localStorage.setItem(STORE+'inventory',JSON.stringify(products.map(({id,stock,min})=>({id,stock,min}))));localStorage.setItem(STORE+'cart',JSON.stringify(cart));localStorage.setItem(STORE+'orders',JSON.stringify(orders));localStorage.setItem(STORE+'stockMoves',JSON.stringify(stockMoves));}
 function loadJSON(key, fallback) {
   const current = localStorage.getItem(STORE + key);
   if (current) {
@@ -49,10 +68,7 @@ const faceKey = (u) => STORE + 'faceid_' + u;
 const hasFaceId = (u) => localStorage.getItem(faceKey(u)) === 'enabled';
 
 function save() {
-  localStorage.setItem(STORE + 'inventory', JSON.stringify(products.map(({ id, stock, min }) => ({ id, stock, min }))));
-  localStorage.setItem(STORE + 'cart', JSON.stringify(cart));
-  localStorage.setItem(STORE + 'orders', JSON.stringify(orders));
-  localStorage.setItem(STORE + 'stockMoves', JSON.stringify(stockMoves));
+  saveLocalOnly();
 }
 function say(t) { const s = $('#speech'); if (s) s.innerHTML = t; }
 function jump(t) { say(t); const tr = $('#trufita'); if (tr) { tr.classList.add('jump'); setTimeout(() => tr.classList.remove('jump'), 800); } }
@@ -90,8 +106,10 @@ function checkCartStock() {
 }
 function addStockMove(type, productId, qty, reason, orderId = '') {
   const p = productById(productId) || BASE_PRODUCTS.find(x => x.id === productId);
-  stockMoves.unshift({ id: 'MV' + Date.now().toString().slice(-7) + Math.floor(Math.random() * 90), date: new Date().toLocaleString('pt-BR'), type, productId, productName: p?.name || productId, emoji: p?.emoji || '📦', qty, reason, orderId });
+  const move = { id: 'MV' + Date.now().toString().slice(-7) + Math.floor(Math.random() * 90), date: new Date().toLocaleString('pt-BR'), type, productId, productName: p?.name || productId, emoji: p?.emoji || '📦', qty, reason, orderId };
+  stockMoves.unshift(move);
   stockMoves = stockMoves.slice(0, 300);
+  
 }
 function deductStockForOrder(order) {
   const need = {};
@@ -282,63 +300,18 @@ function normalizePaymentLabel(v) {
   if (v === 'cartao') return 'Cartão';
   return v || 'Não informado';
 }
-function finish() {
-  if (!cart.length) return alert('Seu carrinho está vazio.');
-  const customerName = ($('#customerName')?.value || '').trim();
-  const customerPhone = ($('#customerPhone')?.value || '').trim();
-  if (!customerName) { $('#customerName')?.focus(); return alert('Informe o nome do cliente.'); }
-  if (!customerPhone) { $('#customerPhone')?.focus(); return alert('Informe o telefone/WhatsApp do cliente.'); }
-  const stockCheck = checkCartStock();
-  if (!stockCheck.ok) return alert(stockCheck.msg);
-  const fulfillment = $('[name=fulfillment]:checked')?.value || 'retirada';
-  const payment = $('#payment')?.value || 'pix';
-  let address = null;
-  if (fulfillment === 'entrega') {
-    if (payment !== 'pix') { $('#payment').value = 'pix'; return alert('Para entrega, somente Pix.'); }
-    const cep = ($('#cep')?.value || '').trim();
-    const rua = ($('#rua')?.value || '').trim();
-    const numero = ($('#numero')?.value || '').trim();
-    const bairro = ($('#bairro')?.value || '').trim();
-    const cidade = ($('#cidade')?.value || '').trim();
-    const estado = ($('#estado')?.value || '').trim();
-    if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
-      return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');
-    }
-    if (!deliveryInfo.applied || normalizeText(deliveryInfo.bairro) !== normalizeText(bairro)) applyDeliveryByRegion(false);
-    address = { cep, rua, numero, complemento: ($('#complemento')?.value || '').trim(), bairro, cidade, estado };
-  }
-  const subtotal = calc();
-  const freight = fulfillment === 'entrega' ? deliveryFee() : 0;
-  const order = {
-    id: 'DE' + Date.now().toString().slice(-6),
-    created: new Date().toLocaleString('pt-BR'),
-    customerName,
-    customerPhone,
-    items: JSON.parse(JSON.stringify(cart)),
-    subtotal,
-    freight,
-    total: subtotal + freight,
-    fulfillment,
-    deliveryMethod: fulfillment === 'entrega' ? DELIVERY_MODE : 'Retirada',
-    deliveryRegion: fulfillment === 'entrega' ? (deliveryInfo.region || deliveryFeeLabel(address?.bairro)) : '',
-    address,
-    payment,
-    paymentLabel: normalizePaymentLabel(payment),
-    status: 'Recebido',
-    stockRestored: false
-  };
-  deductStockForOrder(order);
-  orders.unshift(order);
-  cart = [];
-  deliveryInfo = { type: 'retirada', fee: 0, status: 'Retirada na loja', method: 'Retirada', applied: false, region: '' };
-  save();
-  renderCart(); renderProducts(); renderPromo();
-  if (currentAdmin) renderAdmin();
-  confetti();
-  jump('Pedido finalizado! Ele entrou em Pendentes e o WhatsApp será aberto com a mensagem completa. 💖');
-  const companyPhone = '553192180872';
-  window.open(`https://wa.me/${companyPhone}?text=${encodeURIComponent(buildWhatsappMessage(order))}`, '_blank');
-  location.hash = 'empresa';
+async function finish(){
+  if(!supabaseReady)return alert('O banco online ainda não está configurado. Siga o README da V50 REAL.');
+  if(!cart.length)return alert('Seu carrinho está vazio.');
+  const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim();
+  if(!customerName){$('#customerName')?.focus();return alert('Informe o nome do cliente.');}
+  if(!customerPhone){$('#customerPhone')?.focus();return alert('Informe o telefone/WhatsApp do cliente.');}
+  const fulfillment=$('[name=fulfillment]:checked')?.value||'retirada';let payment=$('#payment')?.value||'pix';let address=null;
+  if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
+  const btn=$('#finishOrder');btn.disabled=true;btn.textContent='Finalizando...';
+  try{const payload={customerName,customerPhone,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};const {data,error}=await supabaseClient.rpc('create_order',{p_payload:payload});if(error)throw error;const order=orderFromSupabase(data);orders.unshift(order);cart=[];save();await loadPublicInventory();renderCart();renderProducts();renderPromo();confetti();jump('Pedido salvo online! Teteu e Ingrid verão em tempo real. 💖');window.open(`https://wa.me/553192180872?text=${encodeURIComponent(buildWhatsappMessage(order))}`,'_blank');location.hash='empresa';}
+  catch(e){console.error(e);alert(e.message||'Não foi possível finalizar o pedido.');}
+  finally{btn.disabled=false;btn.textContent='Finalizar pedido';}
 }
 function enableEnterToNextField() {
   document.addEventListener('keydown', (e) => {
@@ -367,16 +340,16 @@ function orderShortItems(o) { return o.items.map(i => i.flavors ? `🎁 ${i.qty}
 function cleanPhoneBR(phone) { let d = onlyDigits(phone || ''); if (!d) return ''; if (!d.startsWith('55')) d = '55' + d; return d; }
 function orderNotifyMessage(o, type) { const loja = STORE_ADDRESS; if (type === 'ready') return `🍫 *Doce Encanto*\n\nOlá, *${o.customerName}*! 💖\n\nSeu pedido *#${o.id}* já está *pronto*!\n\n${o.fulfillment === 'retirada' ? `Você já pode retirar em:\n📍 *${loja}*` : `Ele será enviado em breve por *Uber Moto*. 🛵`}\n\nObrigado pela preferência! 🍫✨`; if (type === 'delivery') return `🍫 *Doce Encanto*\n\nOlá, *${o.customerName}*! 💖\n\nSeu pedido *#${o.id}* já saiu para entrega.\n\n🛵 A entrega será realizada por um parceiro *Uber Moto*.\n\nFique atento ao telefone, pois o entregador poderá entrar em contato caso necessário.\n\nObrigado pela confiança! ❤️`; if (type === 'delivered') return `🍫 *Doce Encanto*\n\nOlá, *${o.customerName}*!\n\nConsta para nós que seu pedido *#${o.id}* foi entregue. 😍\n\nEsperamos que você aproveite muito suas trufas!\n\nAgradecemos pela preferência e esperamos ver você novamente em breve. 💖🍫`; if (type === 'canceled') return `🍫 *Doce Encanto*\n\nOlá, *${o.customerName}*!\n\nSeu pedido *#${o.id}* foi cancelado. Se precisar, fale com a gente por aqui. 💖`; return ''; }
 function openClientWhatsApp(o, msg = '') { const phone = cleanPhoneBR(o.customerPhone); if (!phone) return alert('Este pedido não possui telefone válido do cliente.'); window.open(`https://wa.me/${phone}${msg ? '?text=' + encodeURIComponent(msg) : ''}`, '_blank'); }
-function setOrderStatusAndNotify(id, status, type) { const o = orders.find(x => x.id === id); if (!o) return; if (status === 'Cancelado') restoreStockForOrder(o); o.status = status; if (orderIsDelivered(o) && !o.deliveredAt) o.deliveredAt = new Date().toLocaleString('pt-BR'); if (orderIsCanceled(o) && !o.canceledAt) o.canceledAt = new Date().toLocaleString('pt-BR'); save(); syncProducts(); renderAdmin(); const msg = type ? orderNotifyMessage(o, type) : ''; if (msg || type === 'chat') openClientWhatsApp(o, msg); }
+async function setOrderStatusAndNotify(id,status,type){if(!supabaseReady||!currentAdmin)return alert('Entre na central online.');try{const {data,error}=await supabaseClient.rpc('admin_update_order_status',{p_order_id:id,p_status:status});if(error)throw error;const updated=orderFromSupabase(data);const idx=orders.findIndex(x=>x.id===id);if(idx>=0)orders[idx]=updated;await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();const msg=type?orderNotifyMessage(updated,type):'';if(msg||type==='chat')openClientWhatsApp(updated,msg);}catch(e){console.error(e);alert(e.message||'Não foi possível atualizar o pedido.');}}
 
 function renderPendingOrders(pending) { if (!pending.length) return '<p class="emptyState">Nenhum pedido pendente no momento.</p>'; return pending.map(o => `<article class="orderCard status-${statusBadgeClass(o.status)}"><div class="orderTop"><div><b>#${o.id}</b><small>${o.created}</small></div><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><div class="orderClient"><b>${o.customerName}</b><small>${o.customerPhone}</small></div><div class="orderItemsMini">${orderShortItems(o)}</div><div class="orderMeta"><span>${o.fulfillment === 'entrega' ? '🛵 Entrega' : '🏪 Retirada'}</span><b>${BRL(o.total)}</b></div><div class="orderActions smartActions"><select data-status="${o.id}"><option ${o.status === 'Recebido' ? 'selected' : ''}>Recebido</option><option ${o.status === 'Produção' ? 'selected' : ''}>Produção</option><option ${o.status === 'Pronto' ? 'selected' : ''}>Pronto</option><option ${o.status === 'Saiu para entrega' ? 'selected' : ''}>Saiu para entrega</option><option ${o.status === 'Aguardando retirada' ? 'selected' : ''}>Aguardando retirada</option><option ${o.status === 'Entregue' ? 'selected' : ''}>Entregue</option></select><button class="secondary" data-next="${o.id}">Avançar</button><button class="primary" data-ready="${o.id}">🟢 Pedido pronto</button>${o.fulfillment === 'entrega' ? `<button class="secondary" data-delivery="${o.id}">🛵 Saiu para entrega</button>` : ''}<button class="secondary" data-delivered="${o.id}">✅ Entregue</button><button class="ghost" data-chat="${o.id}">💬 Conversar</button><button class="dangerBtn" data-cancel="${o.id}">Cancelar</button></div></article>`).join(''); }
 function renderProductionQueue(queue) { if (!queue.length) return '<p class="emptyState">Nenhum pedido aguardando produção.</p>'; return queue.map(o => `<article class="productionTicket"><div class="ticketHead"><b>#${o.id}</b><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><h4>${o.customerName}</h4><p>${orderShortItems(o)}</p><div class="ticketFoot"><small>${o.fulfillment === 'entrega' ? '🛵 Entrega Uber Moto' : '🏪 Retirada na loja'}</small><button class="primary" data-next="${o.id}">${nextProductionStatus(o.status, o.fulfillment) === 'Entregue' ? 'Marcar entregue' : 'Avançar etapa'}</button></div></article>`).join(''); }
 function renderHistory(history) { if (!history.length) return '<p class="emptyState">Nenhum pedido entregue ou cancelado ainda.</p>'; return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Finalizado</b></div>${history.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.status}</small></span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span>${o.deliveredAt || o.canceledAt || o.created}</span></div>`).join('')}</div>`; }
 function renderStockMoves() { if (!stockMoves.length) return '<p class="emptyState">Nenhuma movimentação de estoque ainda.</p>'; return `<div class="historyTable stockMoves"><div class="historyHead"><b>Data</b><b>Produto</b><b>Qtd</b><b>Motivo</b></div>${stockMoves.map(m => `<div class="historyRow"><span>${m.date}</span><span>${m.emoji} ${m.productName}<br><small>${m.type}${m.orderId ? ' • ' + m.orderId : ''}</small></span><b>${m.qty > 0 ? '+' : ''}${m.qty}</b><span>${m.reason}</span></div>`).join('')}</div>`; }
-function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o)).reduce((a, o) => a + o.total, 0), deliveredRevenue = orders.filter(orderIsDelivered).reduce((a, o) => a + o.total, 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><button id="adminBack" class="secondary">Voltar ao site</button></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico</h3>${renderHistory(history)}</section></div><div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><p class="helper">Cadastre quantas trufas existem por sabor. Se zerar, o sabor fica indisponível no site.</p><div class="stockTable">${products.map(p => { const [label, cls, act] = stockStatus(p); return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`; }).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div><div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Histórico de movimentação do estoque</h3>${renderStockMoves()}</section></div><div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total sem cancelados</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length ? revenue / Math.max(1, orders.filter(o => !orderIsCanceled(o)).length) : 0)}</b></div></section></div>`;
-  $('#adminBack').onclick = () => location.hash = 'home';
+function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o)).reduce((a, o) => a + o.total, 0), deliveredRevenue = orders.filter(orderIsDelivered).reduce((a, o) => a + o.total, 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico</h3>${renderHistory(history)}</section></div><div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><p class="helper">Cadastre quantas trufas existem por sabor. Se zerar, o sabor fica indisponível no site.</p><div class="stockTable">${products.map(p => { const [label, cls, act] = stockStatus(p); return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`; }).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div><div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Histórico de movimentação do estoque</h3>${renderStockMoves()}</section></div><div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total sem cancelados</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length ? revenue / Math.max(1, orders.filter(o => !orderIsCanceled(o)).length) : 0)}</b></div></section></div>`;
+  $('#adminBack').onclick=()=>location.hash='home'; $('#adminLogout').onclick=async()=>{await supabaseClient?.auth.signOut();currentAdmin=null;orders=[];stockMoves=[];$('#adminPanel').classList.add('hidden');$('.login').classList.remove('hidden');};
   $$('[data-tabbtn]').forEach(btn => btn.onclick = () => { $$('[data-tabbtn]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); $$('[data-tab]').forEach(p => p.classList.toggle('active', p.dataset.tab === btn.dataset.tabbtn)); });
-  $('#saveStock')?.addEventListener('click', () => { $$('[data-stock]').forEach(inp => { const p = productById(inp.dataset.stock), old = p.stock, next = Math.max(0, Number(inp.value) || 0); const diff = next - old; p.stock = next; if (diff !== 0) addStockMove(diff > 0 ? 'Entrada' : 'Ajuste', p.id, diff, diff > 0 ? 'Entrada manual no estoque' : 'Ajuste manual de estoque'); }); $$('[data-min]').forEach(inp => { const p = productById(inp.dataset.min); p.min = Math.max(1, Number(inp.value) || 1); }); save(); syncProducts(); jump('Estoque atualizado. O site já respeita os sabores disponíveis. ✅'); });
+  $('#saveStock')?.addEventListener('click', async () => {if(!supabaseReady||!currentAdmin)return alert('Entre na central online.');const btn=$('#saveStock');btn.disabled=true;btn.textContent='Salvando...';try{for(const inp of $$('[data-stock]')){const id=inp.dataset.stock,minInp=$(`[data-min="${id}"]`);const {error}=await supabaseClient.rpc('admin_set_inventory',{p_flavor_id:id,p_stock:Math.max(0,Number(inp.value)||0),p_min_stock:Math.max(0,Number(minInp?.value)||0)});if(error)throw error;}await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();jump('Estoque salvo online e sincronizado para todos. ✅');}catch(e){console.error(e);alert(e.message||'Erro ao salvar estoque.');}finally{btn.disabled=false;btn.textContent='Salvar estoque';}});
   $$('[data-status]').forEach(sel => sel.onchange = () => setOrderStatusAndNotify(sel.dataset.status, sel.value));
   $$('[data-next]').forEach(btn => btn.onclick = () => { const o = orders.find(x => x.id === btn.dataset.next); if (!o) return; setOrderStatusAndNotify(o.id, nextProductionStatus(o.status, o.fulfillment)); });
   $$('[data-ready]').forEach(btn => btn.onclick = () => setOrderStatusAndNotify(btn.dataset.ready, 'Pronto', 'ready'));
@@ -390,9 +363,10 @@ function aiAnswer(q) { q = q.toLowerCase(); if (/menos doce|não.*doce|nao.*doce
 function addChat(t, who = 'bot') { if (!$('#chatLog')) return; $('#chatLog').innerHTML += `<div class="msg ${who}">${t}</div>`; $('#chatLog').scrollTop = $('#chatLog').scrollHeight; }
 async function requireFaceId(u) { if (!hasFaceId(u)) return true; if (window.PublicKeyCredential && navigator.credentials) { try { await navigator.credentials.get({ publicKey: { challenge: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]), timeout: 60000, userVerification: 'preferred' } }); return true; } catch { return confirm('Confirme o Face ID/Windows Hello para continuar. Se seu aparelho não abriu a biometria, clique em OK para confirmar manualmente.'); } } return confirm('Face ID/Windows Hello cadastrado. Confirmar acesso agora?'); }
 async function registerFaceId() { const u = ($('#user')?.value || currentAdmin || '').trim(), p = ($('#pass')?.value || '').trim(); if (!ADMIN_USERS[u]) return alert('Digite primeiro um usuário autorizado.'); if (!currentAdmin && p !== '30707420') return alert('Para cadastrar Face ID, primeiro informe usuário e senha corretos.'); localStorage.setItem(faceKey(u), 'enabled'); alert('Face ID/Windows Hello cadastrado para este usuário neste aparelho. A senha continuará sendo exigida primeiro.'); }
-async function loginAdmin() { const u = $('#user').value.trim(), p = $('#pass').value.trim(); if (ADMIN_USERS[u] && p === '30707420') { const ok = await requireFaceId(u); if (!ok) return; currentAdmin = u; $('#adminPanel').classList.remove('hidden'); $('.login').classList.add('hidden'); renderAdmin(); } else alert('Usuário ou senha incorretos.'); }
+async function loginAdmin(){const u=$('#user').value.trim(),p=$('#pass').value,email=ADMIN_EMAILS[u];if(!email)return alert('Usuário ou senha incorretos.');if(!supabaseReady)return alert('Configure o Supabase antes de acessar a central online.');const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';try{const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)throw error;const ok=await requireFaceId(u);if(!ok)return;currentAdmin=u;await loadAdminSupabaseState();subscribeAdminRealtime();$('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}catch(e){console.error(e);alert('Usuário ou senha incorretos, ou o usuário ainda não foi criado no Supabase.');}finally{btn.disabled=false;btn.textContent='Entrar';}}
 
-function init() {
+async function init() {
+  await initSupabase();
   renderProducts(); renderPromo(); renderCart(); addChat('Oii! Eu sou a Trufita AI 💖. Posso indicar sabores, explicar promoções e consultar o estoque para você.');
   $('#cartOpen').onclick = () => { $('#cartDrawer').classList.add('open'); $('#overlay').classList.add('show'); };
   $('#cartClose').onclick = $('#overlay').onclick = () => { $('#cartDrawer').classList.remove('open'); $('#overlay').classList.remove('show'); };

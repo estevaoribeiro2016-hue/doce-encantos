@@ -1,55 +1,89 @@
-# Doce Encanto V44 — Verificação de Estabilidade
+# Doce Encanto V50 REAL — Supabase online e tempo real
 
-Esta versão foi gerada como uma versão de verificação/estabilidade após a limpeza do repositório.
+Esta versão usa um banco PostgreSQL online do Supabase. Pedidos, estoque e histórico ficam sincronizados entre Teteu e Ingrid em aparelhos diferentes.
 
-## Objetivo
+## O que já está implementado no código
 
-Confirmar que o projeto está pronto para testes fechados, sem arquivos misturados de Next.js/Prisma que causavam erro na Vercel.
+- Pedido salvo online por função transacional no banco.
+- Validação e desconto do estoque feitos no servidor, evitando dois clientes comprarem a mesma última unidade.
+- Cancelamento devolve o estoque automaticamente.
+- Histórico de movimentação do estoque online.
+- Pedidos pendentes, produção e histórico sincronizados em tempo real.
+- Login real da central com Supabase Auth.
+- RLS: clientes não conseguem ler pedidos, telefones ou histórico da empresa.
+- Teteu e Ingrid têm o mesmo acesso administrativo.
+- Carrinho, promoção 3 por R$14, frete por bairro, Pix e WhatsApp mantidos.
 
-## Estrutura esperada
+## Etapa obrigatória: criar o banco na SUA conta
 
-- index.html
-- assets/
-- manifest.webmanifest
-- service-worker.js
-- vercel.json
-- README.md
+Eu não consigo criar um projeto dentro da sua conta do Supabase sem acesso à conta. O pacote está completo, mas precisa ser conectado uma vez.
 
-## Removidos / não devem existir no repositório
+### 1. Criar projeto
 
-- prisma/
-- src/
-- package.json
-- package-lock.json
-- next.config.ts
-- tsconfig.json
-- postcss.config.mjs
-- node_modules/
+Acesse o Supabase, crie um projeto e aguarde o banco ficar pronto.
 
-## Checklist para testar antes de divulgar
+### 2. Criar tabelas e funções
 
-1. Abrir o site no celular e computador.
-2. Adicionar trufa unitária ao carrinho.
-3. Adicionar promoção 3 por R$14 com sabores repetidos.
-4. Testar botões + e - no resumo do pedido.
-5. Testar retirada.
-6. Testar entrega com CEP e frete por bairro.
-7. Confirmar se total = produtos + frete.
-8. Confirmar se frete grátis acima de R$30 aparece corretamente.
-9. Finalizar pedido e verificar se entra em Pedidos Pendentes.
-10. Verificar se o estoque baixa somente após finalizar pedido.
-11. Cancelar pedido e confirmar se o estoque volta.
-12. Marcar pedido como pronto e testar mensagem pronta do WhatsApp.
-13. Marcar saiu para entrega e testar mensagem pronta do WhatsApp.
-14. Marcar entregue e confirmar se vai para Histórico.
-15. Conferir Pix com QR Code e copia e cola.
+No projeto: **SQL Editor → New query**. Cole todo o conteúdo de `supabase-schema.sql` e clique em **Run**.
 
-## Status
+### 3. Criar os dois usuários
 
-Base estática limpa para publicação/teste fechado na Vercel.
+Em **Authentication → Users → Add user**, crie:
 
+- Email: `teteu.trufa@doceencanto.local`
+- Senha: `30707420`
+- Marque o email como confirmado.
 
-## V45 - Correção do checkout e CEP
-- CEP agora possui base local de segurança para região 30865/Pindorama quando o ViaCEP falhar.
-- Finalizar pedido aplica o frete por bairro automaticamente se o endereço estiver preenchido.
-- Pedido entra em Pendentes, desconta estoque e abre WhatsApp com mensagem completa.
+Depois crie:
+
+- Email: `ingrid.trufa@doceencanto.local`
+- Senha: `30707420`
+- Marque o email como confirmado.
+
+No site vocês continuam digitando apenas `teteu.trufa` ou `ingrid.trufa`.
+
+### 4. Conectar o site
+
+Em **Project Settings → API**, copie:
+
+- Project URL
+- Publishable key (ou anon key legada)
+
+Abra `assets/supabase-config.js` e preencha:
+
+```js
+window.DoceEncantoSupabaseConfig = {
+  url: 'https://SEU-PROJETO.supabase.co',
+  publishableKey: 'SUA_CHAVE_PUBLICAVEL'
+};
+```
+
+A publishable/anon key pode ficar no navegador porque a segurança está nas políticas RLS. **Nunca** coloque secret key ou service_role nesse arquivo.
+
+### 5. Publicar
+
+Envie todos os arquivos desta pasta para a raiz do GitHub. A Vercel publicará automaticamente.
+
+## Teste obrigatório antes de divulgar
+
+1. Abra o site em um celular e a central em outro.
+2. Entre como Teteu em um aparelho e Ingrid no outro.
+3. Cadastre estoque.
+4. Finalize um pedido de teste.
+5. Confirme que aparece nos dois aparelhos sem atualizar a página.
+6. Marque como Produção, Pronto e Entregue.
+7. Cancele outro pedido e confirme que o estoque voltou.
+
+## Segurança
+
+O cliente pode consultar estoque e criar pedido apenas pela função segura. Somente os dois usuários autenticados podem ler pedidos, alterar status, editar estoque e ver movimentações.
+
+## Configuração deste pacote
+
+Este pacote já está configurado com a Project URL e a Publishable Key informadas pelo responsável do projeto.
+O arquivo preenchido é `assets/supabase-config.js`.
+
+Antes de publicar, confirme no Supabase:
+- o script `supabase-schema.sql` foi executado;
+- os usuários administrativos foram criados e confirmados;
+- o Realtime está habilitado conforme o script.
