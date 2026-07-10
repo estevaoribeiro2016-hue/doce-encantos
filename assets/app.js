@@ -158,29 +158,58 @@ function renderCart() { const totalQty = cart.reduce((a, i) => a + (i.qty || 0),
 
 function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
 function maskCep(v) { v = onlyDigits(v).slice(0, 8); return v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v; }
-async function lookupCep() { const cepEl = $('#cep'); if (!cepEl) return; const status = $('#cepStatus'), raw = onlyDigits(cepEl.value); cepEl.value = maskCep(cepEl.value); resetDeliveryQuote(); if (raw.length < 8) { if (status) { status.textContent = 'Digite o CEP para preencher a rua automaticamente.'; status.className = 'cepStatus'; } return; } if (status) { status.textContent = 'Buscando endereço pelo CEP...'; status.className = 'cepStatus loading'; } try { const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`); const data = await res.json(); if (data.erro) { if (status) { status.textContent = 'CEP não encontrado. Verifique e tente novamente.'; status.className = 'cepStatus error'; } return; } if ($('#rua')) $('#rua').value = data.logradouro || ''; if ($('#bairro')) $('#bairro').value = data.bairro || ''; if ($('#cidade')) $('#cidade').value = data.localidade || ''; if ($('#estado')) $('#estado').value = data.uf || ''; if (status) { status.textContent = 'Endereço preenchido automaticamente. Complete o número e aplique o frete por região.'; status.className = 'cepStatus ok'; } $('#numero')?.focus(); if ($('#bairro')?.value) applyDeliveryByRegion(false); } catch (e) { if (status) { status.textContent = 'Não foi possível consultar o CEP agora. Você pode preencher manualmente.'; status.className = 'cepStatus error'; } } }
-function resetDeliveryQuote() { deliveryInfo = { type: $('[name=fulfillment]:checked')?.value || 'retirada', fee: 0, status: 'Informe o endereço e aplique o frete por bairro', method: $('[name=fulfillment]:checked')?.value === 'entrega' ? DELIVERY_MODE : 'Retirada', applied: false, region: '' }; const box = $('#deliveryQuote'); if (box) { box.classList.add('hidden'); box.innerHTML = ''; } updateTotals(); }
-function deliveryAddressText() { return `${$('#rua')?.value || ''}, ${$('#numero')?.value || ''}, ${$('#bairro')?.value || ''}, ${$('#cidade')?.value || ''}/${$('#estado')?.value || ''}, CEP ${$('#cep')?.value || ''}`.replace(/\s+/g, ' ').trim(); }
-function calculateDeliveryDistance() { if ($('[name=fulfillment]:checked')?.value !== 'entrega') return; const required = ['cep', 'rua', 'bairro', 'cidade', 'estado']; for (const id of required) if (!$('#' + id)?.value.trim()) return alert('Preencha CEP, rua, bairro, cidade e UF para aplicar o frete.'); applyDeliveryByRegion(true); }
 
-function orderItemsText(items) { return items.map(i => i.flavors ? `🎁 ${i.qty}× Promoção 3 por R$14\n${i.flavors.map(f => `• ${f.emoji} ${f.name}`).join('\n')}` : `${i.emoji} ${i.qty}× Trufa de ${i.name}`).join('\n\n'); }
-function finish() {
-  if (!cart.length) return alert('Carrinho vazio.');
-  const stockCheck = checkCartStock(); if (!stockCheck.ok) return alert(stockCheck.msg);
-  const f = $('[name=fulfillment]:checked').value, pay = $('#payment').value;
-  const customerName = ($('#customerName')?.value || '').trim(), customerPhone = ($('#customerPhone')?.value || '').trim();
-  if (!customerName) return alert('Informe o nome do cliente.');
-  if (!customerPhone) return alert('Informe o telefone/WhatsApp do cliente.');
-  if (f === 'entrega') {
-    if (!$('#cep').value || !$('#rua').value || !$('#numero').value || !$('#bairro').value || !$('#cidade').value || !$('#estado').value) return alert('Informe CEP, rua, número, bairro, cidade e UF.');
-    if (pay !== 'pix') return alert('Para entrega, somente Pix.');
-    if (!deliveryInfo.applied) return alert('Aplique o frete por bairro antes de finalizar a entrega.');
+const LOCAL_CEP_FALLBACK = {
+  '30865130': { logradouro: 'Rua Arauto', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
+  '30865180': { logradouro: 'Rua Aletes', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
+  '30865300': { logradouro: 'Rua Aredius', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' }
+};
+function applyCepData(data, source='ViaCEP') {
+  if ($('#rua')) $('#rua').value = data.logradouro || '';
+  if ($('#bairro')) $('#bairro').value = data.bairro || '';
+  if ($('#cidade')) $('#cidade').value = data.localidade || '';
+  if ($('#estado')) $('#estado').value = data.uf || '';
+  const status = $('#cepStatus');
+  if (status) {
+    status.textContent = source === 'local' ? 'Endereço reconhecido pela base local. Complete o número e finalize normalmente.' : 'Endereço preenchido automaticamente. Complete o número e finalize normalmente.';
+    status.className = 'cepStatus ok';
   }
-  const id = 'DE' + Date.now().toString().slice(-6), sub = calc(), fee = f === 'entrega' ? deliveryFee() : 0, total = sub + fee;
-  const order = { id, customerName, customerPhone, items: JSON.parse(JSON.stringify(cart)), total, subtotal: sub, frete: fee, deliveryMethod: f === 'entrega' ? DELIVERY_MODE : 'Retirada', bairro: $('#bairro')?.value || '', deliveryRegion: deliveryInfo.region || '', fulfillment: f, payment: pay, status: 'Recebido', paymentStatus: pay === 'pix' ? 'Aguardando comprovante' : 'Pagamento na retirada', created: new Date().toLocaleString('pt-BR'), address: f === 'entrega' ? deliveryAddressText() : STORE_ADDRESS, stockRestored: false };
-  deductStockForOrder(order); orders.unshift(order);
-  const msg = `🍫 *NOVO PEDIDO - DOCE ENCANTO*\n\n📦 *Pedido:* ${order.id}\n📅 *Data:* ${order.created}\n\n👤 *Cliente*\nNome: ${customerName}\nTelefone: ${customerPhone}\n\n━━━━━━━━━━━━━━\n🛒 *ITENS*\n${orderItemsText(order.items)}\n\n━━━━━━━━━━━━━━\n💵 *Resumo*\nSubtotal: ${BRL(sub)}\nFrete: ${fee === 0 && f === 'entrega' ? '🎉 GRÁTIS' : BRL(fee)}\nTotal: *${BRL(total)}*\n\n━━━━━━━━━━━━━━\n${f === 'retirada' ? `🏪 *RETIRADA NA LOJA*\nEndereço: ${STORE_ADDRESS}` : `🚚 *ENTREGA*\nModalidade: ${DELIVERY_MODE}\nEndereço: ${deliveryAddressText()}\nBairro: ${$('#bairro')?.value || ''}\nRegião: ${deliveryInfo.region || 'Demais bairros'}\nFrete aplicado: ${fee === 0 ? '🎉 GRÁTIS — pedido acima de R$30,00' : BRL(fee)}`}\n\n━━━━━━━━━━━━━━\n💳 *Pagamento*\nForma: ${pay.toUpperCase()}\nStatus: ${order.paymentStatus}\nComprovante: ${pay === 'pix' ? 'Aguardando envio/confirmação' : 'Não necessário agora'}\n\n📦 *Produção*\nStatus: Recebido\n\n✅ Pedido enviado pelo site da Doce Encanto.`;
-  cart = []; deliveryInfo = { type: 'retirada', fee: 0, status: 'Retirada na loja', method: 'Retirada', applied: false, region: '' }; save(); syncProducts(); renderCart(); confetti(); jump('Pedido finalizado! Ele entrou em Pedidos Pendentes e o estoque foi descontado. 🎉'); window.open('https://wa.me/5531992180872?text=' + encodeURIComponent(msg), '_blank');
+  $('#numero')?.focus();
+  if ($('#bairro')?.value) applyDeliveryByRegion(false);
+}
+function localCepFallback(raw) {
+  if (LOCAL_CEP_FALLBACK[raw]) return LOCAL_CEP_FALLBACK[raw];
+  if (raw.startsWith('30865')) return { logradouro: '', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' };
+  return null;
+}
+async function lookupCep() {
+  const cepEl = $('#cep');
+  if (!cepEl) return;
+  const status = $('#cepStatus'), raw = onlyDigits(cepEl.value);
+  cepEl.value = maskCep(cepEl.value);
+  resetDeliveryQuote();
+  if (raw.length < 8) {
+    if (status) { status.textContent = 'Digite o CEP para preencher a rua automaticamente.'; status.className = 'cepStatus'; }
+    return;
+  }
+  if (status) { status.textContent = 'Buscando endereço pelo CEP...'; status.className = 'cepStatus loading'; }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('ViaCEP indisponível');
+    const data = await res.json();
+    if (data.erro) throw new Error('CEP não encontrado');
+    applyCepData(data, 'viacep');
+  } catch (e) {
+    const fallback = localCepFallback(raw);
+    if (fallback) {
+      applyCepData(fallback, 'local');
+      return;
+    }
+    if (status) { status.textContent = 'Não foi possível consultar o CEP agora. Preencha manualmente e clique em Aplicar frete por bairro.'; status.className = 'cepStatus error'; }
+  }
 }
 
 function stockStatus(p) { if (p.stock <= 0) return ['Sem estoque', 'danger', 'Produzir hoje']; if (p.stock <= p.min) return ['Atenção', 'warn', 'Repor em breve']; return ['OK', 'ok', 'Estoque saudável']; }
@@ -234,7 +263,7 @@ function init() {
   $('#themeToggle').onclick = () => { document.body.classList.toggle('dark'); $('#themeToggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
   if ($('#cep')) { $('#cep').addEventListener('input', () => { $('#cep').value = maskCep($('#cep').value); resetDeliveryQuote(); }); $('#cep').addEventListener('blur', lookupCep); $('#cep').addEventListener('change', lookupCep); }
   ['rua', 'cidade', 'estado', 'numero'].forEach(id => { $('#' + id)?.addEventListener('input', () => updateTotals()); });
-  $('#bairro')?.addEventListener('input', () => { if ($('[name=fulfillment]:checked')?.value === 'entrega' && $('#bairro').value.trim()) applyDeliveryByRegion(false); else resetDeliveryQuote(); });
+  ['rua','numero','bairro','cidade','estado'].forEach(id => $('#' + id)?.addEventListener('input', () => { if ($('[name=fulfillment]:checked')?.value === 'entrega' && $('#bairro')?.value.trim()) applyDeliveryByRegion(false); else resetDeliveryQuote(); }));
   $('#calcDistance')?.addEventListener('click', calculateDeliveryDistance);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { });
 }

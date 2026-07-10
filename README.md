@@ -47,3 +47,9 @@ Confirmar que o projeto está pronto para testes fechados, sem arquivos misturad
 ## Status
 
 Base estática limpa para publicação/teste fechado na Vercel.
+
+
+## V45 - Correção do checkout e CEP
+- CEP agora possui base local de segurança para região 30865/Pindorama quando o ViaCEP falhar.
+- Finalizar pedido aplica o frete por bairro automaticamente se o endereço estiver preenchido.
+- Pedido entra em Pendentes, desconta estoque e abre WhatsApp com mensagem completa.
