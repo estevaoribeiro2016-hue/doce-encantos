@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
     }
 
     const select = [
-      'id', 'total', 'payment', 'payment_status', 'customer_name', 'customer_email',
+      'id', 'total', 'payment', 'payment_status', 'customer_name',
       'customer_phone', 'mp_payment_id', 'pix_qr_code', 'pix_qr_code_base64',
       'pix_expiration', 'pix_generation', 'status'
     ].join(',');
@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
         notification_url: `${siteUrl}/api/mercadopago-webhook?source_news=webhooks`,
         date_of_expiration: expires,
         payer: {
-          email: order.customer_email || `pix.${String(order.id).toLowerCase()}@doceencanto.local`,
+          email: `pedido.${String(order.id).toLowerCase().replace(/[^a-z0-9]/g, '')}@doceencanto.com.br`,
           first_name: firstName,
           last_name: lastName
         },
