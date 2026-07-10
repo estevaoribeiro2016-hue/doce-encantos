@@ -212,6 +212,151 @@ async function lookupCep() {
   }
 }
 
+
+function resetDeliveryQuote() {
+  deliveryInfo = { type: $('[name=fulfillment]:checked')?.value || 'retirada', fee: 0, status: 'Não aplicado', method: deliveryInfo?.method || DELIVERY_MODE, applied: false, region: '' };
+  const box = $('#deliveryQuote');
+  if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+  updateTotals();
+}
+function calculateDeliveryDistance() {
+  return applyDeliveryByRegion(true);
+}
+function orderItemsText(items) {
+  return items.map(i => {
+    if (i.flavors) {
+      const counts = {};
+      i.flavors.forEach(f => counts[f.name] = (counts[f.name] || 0) + 1);
+      const flavors = Object.entries(counts).map(([name, qty]) => `   • ${qty}x ${name}`).join('\n');
+      return `🎁 ${i.qty}x Promoção 3 trufas por R$14\n${flavors}`;
+    }
+    return `${i.emoji} ${i.qty}x Trufa de ${i.name} — ${BRL(i.price * i.qty)}`;
+  }).join('\n\n');
+}
+function buildWhatsappMessage(order) {
+  const isDelivery = order.fulfillment === 'entrega';
+  const lines = [];
+  lines.push('🍫 *NOVO PEDIDO - DOCE ENCANTO*');
+  lines.push('');
+  lines.push(`📦 *Pedido:* #${order.id}`);
+  lines.push(`📅 *Data:* ${order.created}`);
+  lines.push('');
+  lines.push('👤 *Cliente*');
+  lines.push(`Nome: ${order.customerName}`);
+  lines.push(`Telefone: ${order.customerPhone}`);
+  lines.push('');
+  lines.push('🛒 *Itens*');
+  lines.push(orderItemsText(order.items));
+  lines.push('');
+  lines.push('💰 *Resumo*');
+  lines.push(`Produtos: ${BRL(order.subtotal)}`);
+  lines.push(`Frete: ${order.freight === 0 && isDelivery ? '🎉 GRÁTIS' : BRL(order.freight)}`);
+  lines.push(`Total: *${BRL(order.total)}*`);
+  lines.push('');
+  if (isDelivery) {
+    lines.push('🚚 *Entrega*');
+    lines.push(`Modalidade: ${DELIVERY_MODE}`);
+    lines.push(`CEP: ${order.address.cep}`);
+    lines.push(`Rua: ${order.address.rua}`);
+    lines.push(`Número: ${order.address.numero}`);
+    if (order.address.complemento) lines.push(`Complemento: ${order.address.complemento}`);
+    lines.push(`Bairro: ${order.address.bairro}`);
+    lines.push(`Cidade/UF: ${order.address.cidade}/${order.address.estado}`);
+    lines.push(`Região: ${order.deliveryRegion || 'Frete por bairro'}`);
+    lines.push('');
+  } else {
+    lines.push('🏪 *Retirada na loja*');
+    lines.push(STORE_ADDRESS);
+    lines.push('');
+  }
+  lines.push('💳 *Pagamento*');
+  lines.push(`Forma: ${order.paymentLabel}`);
+  lines.push(order.payment === 'pix' ? 'Status: Aguardando confirmação do Pix' : 'Status: A combinar na retirada');
+  lines.push('');
+  lines.push('📌 *Status inicial:* Recebido');
+  return lines.join('\n');
+}
+function normalizePaymentLabel(v) {
+  if (v === 'pix') return 'PIX';
+  if (v === 'dinheiro') return 'Dinheiro';
+  if (v === 'cartao') return 'Cartão';
+  return v || 'Não informado';
+}
+function finish() {
+  if (!cart.length) return alert('Seu carrinho está vazio.');
+  const customerName = ($('#customerName')?.value || '').trim();
+  const customerPhone = ($('#customerPhone')?.value || '').trim();
+  if (!customerName) { $('#customerName')?.focus(); return alert('Informe o nome do cliente.'); }
+  if (!customerPhone) { $('#customerPhone')?.focus(); return alert('Informe o telefone/WhatsApp do cliente.'); }
+  const stockCheck = checkCartStock();
+  if (!stockCheck.ok) return alert(stockCheck.msg);
+  const fulfillment = $('[name=fulfillment]:checked')?.value || 'retirada';
+  const payment = $('#payment')?.value || 'pix';
+  let address = null;
+  if (fulfillment === 'entrega') {
+    if (payment !== 'pix') { $('#payment').value = 'pix'; return alert('Para entrega, somente Pix.'); }
+    const cep = ($('#cep')?.value || '').trim();
+    const rua = ($('#rua')?.value || '').trim();
+    const numero = ($('#numero')?.value || '').trim();
+    const bairro = ($('#bairro')?.value || '').trim();
+    const cidade = ($('#cidade')?.value || '').trim();
+    const estado = ($('#estado')?.value || '').trim();
+    if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
+      return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');
+    }
+    if (!deliveryInfo.applied || normalizeText(deliveryInfo.bairro) !== normalizeText(bairro)) applyDeliveryByRegion(false);
+    address = { cep, rua, numero, complemento: ($('#complemento')?.value || '').trim(), bairro, cidade, estado };
+  }
+  const subtotal = calc();
+  const freight = fulfillment === 'entrega' ? deliveryFee() : 0;
+  const order = {
+    id: 'DE' + Date.now().toString().slice(-6),
+    created: new Date().toLocaleString('pt-BR'),
+    customerName,
+    customerPhone,
+    items: JSON.parse(JSON.stringify(cart)),
+    subtotal,
+    freight,
+    total: subtotal + freight,
+    fulfillment,
+    deliveryMethod: fulfillment === 'entrega' ? DELIVERY_MODE : 'Retirada',
+    deliveryRegion: fulfillment === 'entrega' ? (deliveryInfo.region || deliveryFeeLabel(address?.bairro)) : '',
+    address,
+    payment,
+    paymentLabel: normalizePaymentLabel(payment),
+    status: 'Recebido',
+    stockRestored: false
+  };
+  deductStockForOrder(order);
+  orders.unshift(order);
+  cart = [];
+  deliveryInfo = { type: 'retirada', fee: 0, status: 'Retirada na loja', method: 'Retirada', applied: false, region: '' };
+  save();
+  renderCart(); renderProducts(); renderPromo();
+  if (currentAdmin) renderAdmin();
+  confetti();
+  jump('Pedido finalizado! Ele entrou em Pendentes e o WhatsApp será aberto com a mensagem completa. 💖');
+  const companyPhone = '553192180872';
+  window.open(`https://wa.me/${companyPhone}?text=${encodeURIComponent(buildWhatsappMessage(order))}`, '_blank');
+  location.hash = 'empresa';
+}
+function enableEnterToNextField() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const el = e.target;
+    if (!(el instanceof HTMLElement)) return;
+    if (!el.matches('input, select, button')) return;
+    if (el.closest('#aiForm')) return;
+    if (el.tagName === 'BUTTON') return;
+    e.preventDefault();
+    const focusables = $$('input, select, button, a[href], textarea')
+      .filter(x => !x.disabled && x.offsetParent !== null && x.tabIndex !== -1 && !x.closest('.hidden'));
+    const idx = focusables.indexOf(el);
+    const next = focusables[idx + 1];
+    if (next) next.focus();
+  });
+}
+
 function stockStatus(p) { if (p.stock <= 0) return ['Sem estoque', 'danger', 'Produzir hoje']; if (p.stock <= p.min) return ['Atenção', 'warn', 'Repor em breve']; return ['OK', 'ok', 'Estoque saudável']; }
 function orderIsDelivered(o) { return normalizeText(o.status) === 'entregue'; }
 function orderIsCanceled(o) { return normalizeText(o.status) === 'cancelado'; }
@@ -261,10 +406,11 @@ function init() {
   $$('.chips button').forEach(b => b.onclick = () => { $('#aiInput').value = b.dataset.q; $('#aiForm').dispatchEvent(new Event('submit')); });
   $('#loginBtn').onclick = loginAdmin; $('#faceRegister') && ($('#faceRegister').onclick = registerFaceId);
   $('#themeToggle').onclick = () => { document.body.classList.toggle('dark'); $('#themeToggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙'; };
-  if ($('#cep')) { $('#cep').addEventListener('input', () => { $('#cep').value = maskCep($('#cep').value); resetDeliveryQuote(); }); $('#cep').addEventListener('blur', lookupCep); $('#cep').addEventListener('change', lookupCep); }
+  if ($('#cep')) { let cepTimer=null; $('#cep').addEventListener('input', () => { $('#cep').value = maskCep($('#cep').value); resetDeliveryQuote(); clearTimeout(cepTimer); if (onlyDigits($('#cep').value).length === 8) cepTimer = setTimeout(lookupCep, 250); }); $('#cep').addEventListener('blur', lookupCep); $('#cep').addEventListener('change', lookupCep); }
   ['rua', 'cidade', 'estado', 'numero'].forEach(id => { $('#' + id)?.addEventListener('input', () => updateTotals()); });
   ['rua','numero','bairro','cidade','estado'].forEach(id => $('#' + id)?.addEventListener('input', () => { if ($('[name=fulfillment]:checked')?.value === 'entrega' && $('#bairro')?.value.trim()) applyDeliveryByRegion(false); else resetDeliveryQuote(); }));
   $('#calcDistance')?.addEventListener('click', calculateDeliveryDistance);
+  enableEnterToNextField();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { });
 }
 init();
