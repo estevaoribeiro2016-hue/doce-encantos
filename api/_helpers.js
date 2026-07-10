@@ -7,10 +7,13 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function requiredEnv(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Variável de ambiente ausente: ${name}`);
-  return value;
+function requiredEnv(name, aliases = []) {
+  const names = [name, ...aliases];
+  for (const key of names) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  throw new Error(`Variável de ambiente ausente: ${name}`);
 }
 
 function optionalEnv(name) {
@@ -19,7 +22,7 @@ function optionalEnv(name) {
 
 async function supabaseRequest(path, options = {}) {
   const base = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
-  const key = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const key = requiredEnv('SUPABASE_SERVICE_ROLE_KEY', ['SUPABASE_SERVICE_KEY', 'SUPABASE_SECRET_KEY']);
   const response = await fetch(`${base}/rest/v1/${path}`, {
     ...options,
     headers: {

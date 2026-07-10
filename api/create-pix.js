@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
         notification_url: `${siteUrl}/api/mercadopago-webhook?source_news=webhooks`,
         date_of_expiration: expires,
         payer: {
-          email: order.customer_email,
+          email: order.customer_email || `pix.${String(order.id).toLowerCase()}@doce-encantos.vercel.app`,
           first_name: firstName,
           last_name: lastName
         },

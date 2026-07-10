@@ -21,7 +21,7 @@ begin
  if nullif(trim(p_payload->>'customerPhone'),'') is null then raise exception 'Informe o telefone do cliente.';end if;
  if jsonb_typeof(p_payload->'items')<>'array' or jsonb_array_length(p_payload->'items')=0 then raise exception 'Carrinho vazio.';end if;
  if v_fulfillment not in('retirada','entrega') then raise exception 'Forma de recebimento inválida.';end if;
- if coalesce(p_payload->>'payment','')='pix' and (v_email='' or v_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then raise exception 'Informe um e-mail válido para gerar o Pix.';end if;
+ -- O e-mail não é solicitado ao cliente. O backend gera um identificador técnico para o Mercado Pago quando necessário.
  if v_fulfillment='entrega' and coalesce(p_payload->>'payment','')<>'pix' then raise exception 'Para entrega, somente Pix.';end if;
  if v_fulfillment='entrega' and nullif(trim(v_bairro),'') is null then raise exception 'Informe o bairro.';end if;
  for v_item in select value from jsonb_array_elements(p_payload->'items') loop

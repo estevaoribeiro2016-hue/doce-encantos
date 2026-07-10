@@ -430,15 +430,14 @@ function showPixModal(order,pix=null,error=''){
 async function finish(){
   if(!supabaseReady)return alert('O banco online ainda não está configurado.');
   if(!cart.length)return alert('Seu carrinho está vazio.');
-  const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim(),customerEmail=($('#customerEmail')?.value||'').trim();
+  const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim();
   if(!customerName){$('#customerName')?.focus();return alert('Informe o nome do cliente.');}
   if(!customerPhone){$('#customerPhone')?.focus();return alert('Informe o telefone/WhatsApp do cliente.');}
   const fulfillment=$('[name=fulfillment]:checked')?.value||'retirada';let payment=$('#payment')?.value||'pix';let address=null;
-  if(payment==='pix'&&!/^\S+@\S+\.\S+$/.test(customerEmail)){ $('#customerEmail')?.focus(); return alert('Informe um e-mail válido para gerar o Pix.'); }
-  if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';if(!/^\S+@\S+\.\S+$/.test(customerEmail)){ $('#customerEmail')?.focus(); return alert('Informe um e-mail válido para gerar o Pix.'); }const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
+  if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
   const btn=$('#finishOrder');btn.disabled=true;btn.textContent='Finalizando...';
   try{
-    const payload={customerName,customerPhone,customerEmail,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};
+    const payload={customerName,customerPhone,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};
     const {data,error}=await supabaseClient.rpc('create_order',{p_payload:payload});if(error)throw error;
     const order=orderFromSupabase(data);orders.unshift(order);cart=[];save();await loadPublicInventory();renderCart();renderProducts();renderPromo();confetti();
     if(payment==='pix'){
