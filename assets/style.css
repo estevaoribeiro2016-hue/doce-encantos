@@ -43,3 +43,6 @@
 .smartActions button,.smartActions select{min-height:38px}
 .ghost{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:inherit;border-radius:14px;padding:.65rem .9rem;font-weight:800;cursor:pointer}
 .ghost:hover{background:rgba(255,255,255,.14)}
+
+/* V54 */
+.monthGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}.monthCard{padding:16px;border:1px solid var(--line,#eadde5);border-radius:16px;background:var(--card,#fff);display:flex;flex-direction:column;gap:5px}.monthCard.current{outline:2px solid #ff69a8}.monthCard b{font-size:1.25rem}.monthCard small{opacity:.72}.zoneToolbar,.zoneActions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.zoneToolbar input{flex:1;min-width:220px}.zoneRow{display:grid;grid-template-columns:minmax(180px,2fr) 120px 100px auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line,#eee)}.mapBox{margin-top:18px}.mapBox iframe{width:100%;height:360px;border:0;border-radius:16px}.adminTabs{overflow-x:auto}.adminTabs button{white-space:nowrap}@media(max-width:700px){.zoneRow{grid-template-columns:1fr 100px}.zoneRow label,.zoneRow button{grid-column:auto}.mapBox iframe{height:260px}}

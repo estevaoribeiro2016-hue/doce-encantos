@@ -6,14 +6,16 @@ const BASE_PRODUCTS = [
   { id: 'brigadeiro', name: 'Brigadeiro', emoji: '🍫', price: 5, stock: 20, min: 8, desc: 'Clássica, cremosa e intensa. Perfeita para quem ama chocolate.' },
   { id: 'oreo', name: 'Oreo', emoji: '🖤', price: 5, stock: 20, min: 8, desc: 'Mais docinha, com biscoito preto e recheio branco crocante.' },
   { id: 'maracuja', name: 'Maracujá', emoji: '💛', price: 5, stock: 20, min: 8, desc: 'Equilibrada, com toque cítrico que combina muito com chocolate.' },
-  { id: 'coco', name: 'Coco', emoji: '🥥', price: 5, stock: 20, min: 8, desc: 'Suave, cremosa e delicada.' }
+  { id: 'coco', name: 'Coco', emoji: '🥥', price: 5, stock: 20, min: 8, desc: 'Suave, cremosa e delicada.' },
+  { id: 'morango', name: 'Morango', emoji: '🍓', price: 5, stock: 0, min: 0, unavailable: true, desc: 'Sabor de morango. Visível no cardápio e indisponível no momento.' },
+  { id: 'uva-verde', name: 'Uva Verde', emoji: '🍇', price: 5, stock: 0, min: 0, unavailable: true, desc: 'Sabor de uva verde. Visível no cardápio e indisponível no momento.' }
 ];
 
-const STORE = 'de_v43_';
+const STORE = 'de_v54_';
 const LEGACY_STORES = ['de_v40_', 'de_v41_', 'de_v42_'];
 const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 const DELIVERY_MODE = 'Uber Moto';
-const DELIVERY_FEES = { pindorama: 5, filadelfia: 5, gloria: 6, coqueiros: 6 };
+const DELIVERY_FEES = { pindorama: 5, filadelfia: 5, 'jardim filadelfia': 5, 'novo gloria': 6, gloria: 6, coqueiros: 6 };
 const DEFAULT_DELIVERY_FEE = 10;
 const ADMIN_USERS = {
   'teteu.trufa': { name: 'Teteu', role: 'Administrador', fullAccess: true },
@@ -32,12 +34,12 @@ const ADMIN_EMAILS={'teteu.trufa':'teteu.trufa@doceencanto.local','ingrid.trufa'
 function isSupabaseConfigured(){const c=window.DoceEncantoSupabaseConfig||{},k=c.publishableKey||c.anonKey;return !!(c.url&&k&&!String(c.url).includes('COLE_AQUI')&&!String(k).includes('COLE_AQUI'));}
 async function initSupabase(){if(!window.supabase||!isSupabaseConfigured()){console.warn('Supabase não configurado.');return;}try{const c=window.DoceEncantoSupabaseConfig;supabaseClient=window.supabase.createClient(c.url,c.publishableKey||c.anonKey,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false}});await loadPublicInventory();subscribeInventoryRealtime();supabaseReady=true;supabaseStatus='online';}catch(e){supabaseStatus='erro';console.error(e);}}
 function supabaseStatusHtml(){return supabaseReady?'<span class="pill ok">🟢 Banco online conectado</span>':'<span class="pill danger">🔴 Banco online não configurado</span>';}
-async function loadPublicInventory(){if(!supabaseClient)return;const {data,error}=await supabaseClient.from('inventory').select('*').order('flavor_id');if(error)throw error;if(data?.length){inventory=data.map(r=>({id:r.flavor_id,stock:Number(r.stock||0),min:Number(r.min_stock||1)}));products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));saveLocalOnly();}}
-async function loadAdminSupabaseState(){if(!supabaseClient)return;const [o,m]=await Promise.all([supabaseClient.from('orders').select('*').order('created_at',{ascending:false}).limit(500),supabaseClient.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(500)]);if(o.error)throw o.error;if(m.error)throw m.error;orders=(o.data||[]).map(orderFromSupabase);stockMoves=(m.data||[]).map(moveFromSupabase);saveLocalOnly();}
-function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
+async function loadPublicInventory(){if(!supabaseClient)return;const [inv,zones]=await Promise.all([supabaseClient.from('inventory').select('*').order('flavor_id'),supabaseClient.from('delivery_zones').select('*').eq('active',true).order('name')]);if(inv.error)throw inv.error;if(zones.error)console.warn(zones.error);if(inv.data?.length){inventory=inv.data.map(r=>({id:r.flavor_id,stock:Number(r.stock||0),min:Number(r.min_stock||0)}));products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));}deliveryZones=(zones.data||[]).map(z=>({id:z.id,name:z.name,normalizedName:z.normalized_name,fee:Number(z.fee||0),active:!!z.active,latitude:z.latitude,longitude:z.longitude}));saveLocalOnly();}
+async function loadAdminSupabaseState(){if(!supabaseClient)return;const [o,m,z]=await Promise.all([supabaseClient.from('orders').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('delivery_zones').select('*').order('name')]);if(o.error)throw o.error;if(m.error)throw m.error;if(z.error)throw z.error;orders=(o.data||[]).map(orderFromSupabase);stockMoves=(m.data||[]).map(moveFromSupabase);deliveryZones=(z.data||[]).map(x=>({id:x.id,name:x.name,normalizedName:x.normalized_name,fee:Number(x.fee||0),active:!!x.active,latitude:x.latitude,longitude:x.longitude}));deliveryZonesDraft=deliveryZones.map(x=>({...x}));saveLocalOnly();}
+function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,createdAt:r.created_at,readyAt:r.ready_at?new Date(r.ready_at).toLocaleString('pt-BR'):'',deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
 function moveFromSupabase(r){return{id:r.id,date:new Date(r.created_at).toLocaleString('pt-BR'),type:r.type,productId:r.flavor_id,productName:r.flavor_name,emoji:r.emoji,qty:Number(r.qty||0),reason:r.reason,orderId:r.order_id||''};}
 function subscribeInventoryRealtime(){if(!supabaseClient)return;supabaseClient.channel('public-inventory-v50').on('postgres_changes',{event:'*',schema:'public',table:'inventory'},async()=>{await loadPublicInventory();renderProducts();renderPromo();renderCart();if(currentAdmin)renderAdmin();}).subscribe();}
-function subscribeAdminRealtime(){if(!supabaseClient)return;if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);realtimeChannel=supabaseClient.channel('admin-v50').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'stock_movements'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).subscribe();}
+function subscribeAdminRealtime(){if(!supabaseClient)return;if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);realtimeChannel=supabaseClient.channel('admin-v50').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'stock_movements'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'delivery_zones'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).subscribe();}
 function saveLocalOnly(){localStorage.setItem(STORE+'inventory',JSON.stringify(products.map(({id,stock,min})=>({id,stock,min}))));localStorage.setItem(STORE+'cart',JSON.stringify(cart));localStorage.setItem(STORE+'orders',JSON.stringify(orders));localStorage.setItem(STORE+'stockMoves',JSON.stringify(stockMoves));}
 function loadJSON(key, fallback) {
   const current = localStorage.getItem(STORE + key);
@@ -61,11 +63,20 @@ let stockMoves = loadJSON('stockMoves', []);
 let promo = [];
 let currentAdmin = null;
 let deliveryInfo = { type: 'retirada', fee: 0, status: 'Retirada na loja', method: 'Retirada', applied: false, region: '' };
+let deliveryZones = [];
+let deliveryZonesDraft = [];
+let deliveryZoneSearch = '';
+let printPaperWidth = Number(localStorage.getItem(STORE+'paperWidth') || 58);
 
 const normalizeText = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const productById = (id) => products.find(p => p.id === id);
 const faceKey = (u) => STORE + 'faceid_' + u;
-const hasFaceId = (u) => localStorage.getItem(faceKey(u)) === 'enabled';
+const bytesToBase64 = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const base64ToBytes = (value) => Uint8Array.from(atob(value), c => c.charCodeAt(0));
+const hasFaceId = (u) => {
+  try { return !!JSON.parse(localStorage.getItem(faceKey(u)) || 'null')?.credentialId; }
+  catch { return false; }
+};
 
 function save() {
   saveLocalOnly();
@@ -76,8 +87,8 @@ function pointPix(t) { say(t); const tr = $('#trufita'); if (tr) { tr.classList.
 function confetti() { for (let i = 0; i < 26; i++) { const e = document.createElement('span'); e.className = 'confetti'; e.textContent = ['🍫', '✨', '💖', '🎉'][i % 4]; e.style.left = Math.random() * 100 + 'vw'; e.style.animationDelay = Math.random() * .18 + 's'; document.body.append(e); setTimeout(() => e.remove(), 1400); } }
 function fly(btn, emoji) { if (!btn || !$('#cartOpen')) return; const r = btn.getBoundingClientRect(), c = $('#cartOpen').getBoundingClientRect(), el = document.createElement('div'); el.className = 'fly'; el.textContent = emoji; el.style.left = r.left + r.width / 2 + 'px'; el.style.top = r.top + r.height / 2 + 'px'; document.body.append(el); requestAnimationFrame(() => { el.style.transform = `translate(${c.left - r.left}px,${c.top - r.top}px) scale(.25) rotate(360deg)`; el.style.opacity = '.15'; }); setTimeout(() => { el.remove(); $('#cartOpen').classList.add('pop'); setTimeout(() => $('#cartOpen').classList.remove('pop'), 500); }, 760); }
 
-function deliveryFeeByRegion(bairro) { return DELIVERY_FEES[normalizeText(bairro)] || DEFAULT_DELIVERY_FEE; }
-function deliveryFeeLabel(bairro) { const key = normalizeText(bairro); if (key === 'pindorama' || key === 'filadelfia') return 'Região local'; if (key === 'gloria' || key === 'coqueiros') return 'Região intermediária'; return 'Demais bairros'; }
+function deliveryFeeByRegion(bairro) { const key=normalizeText(bairro); const found=deliveryZones.find(z=>z.active && (normalizeText(z.name)===key || z.normalizedName===key)); return found ? Number(found.fee) : (DELIVERY_FEES[key] ?? DEFAULT_DELIVERY_FEE); }
+function deliveryFeeLabel(bairro) { const key=normalizeText(bairro); const found=deliveryZones.find(z=>z.active&&(normalizeText(z.name)===key||z.normalizedName===key)); return found ? 'Taxa cadastrada pela central' : 'Taxa padrão para bairro não cadastrado'; }
 function calc() { return cart.reduce((a, i) => a + Number(i.price || 0) * Number(i.qty || 0), 0); }
 function stockReservedInCart(id) { return cart.reduce((a, i) => a + (i.flavors ? i.flavors.filter(f => f.id === id).length * (i.qty || 1) : (i.id === id ? (i.qty || 0) : 0)), 0); }
 function stockNeededByCart() {
@@ -88,7 +99,7 @@ function stockNeededByCart() {
   }
   return need;
 }
-function canAddProduct(id, qty = 1) { const p = productById(id); return p && p.stock > 0 && stockReservedInCart(id) + qty <= p.stock; }
+function canAddProduct(id, qty = 1) { const p = productById(id); return p && !p.unavailable && p.stock > 0 && stockReservedInCart(id) + qty <= p.stock; }
 function canAddPromoBatch(item, extraQty = 1) {
   const need = {};
   (item.flavors || []).forEach(f => need[f.id] = (need[f.id] || 0) + extraQty);
@@ -99,7 +110,7 @@ function checkCartStock() {
   const need = stockNeededByCart();
   for (const [id, qty] of Object.entries(need)) {
     const p = productById(id);
-    if (!p || p.stock <= 0) return { ok: false, msg: `${p?.name || id} está indisponível.` };
+    if (!p || p.unavailable || p.stock <= 0) return { ok: false, msg: `${p?.name || id} está indisponível.` };
     if (qty > p.stock) return { ok: false, msg: `Não temos estoque suficiente de ${p.name}. Disponível: ${p.stock}. No carrinho: ${qty}.` };
   }
   return { ok: true };
@@ -142,7 +153,7 @@ function syncProducts() { products = BASE_PRODUCTS.map(p => ({ ...p, ...(product
 function renderProducts() {
   if (!$('#products')) return;
   $('#products').innerHTML = products.map(p => {
-    const out = p.stock <= 0;
+    const out = p.unavailable || p.stock <= 0;
     return `<article class="product ${out ? 'soldout' : ''}"><div class="art">${p.emoji}</div><h3>Trufa de ${p.name}</h3><p>${p.desc}</p><small class="stockBadge ${out ? 'danger' : ''}">${out ? 'Indisponível' : 'Estoque: ' + p.stock}</small><div class="price">${BRL(p.price)}</div><button class="primary full add" data-id="${p.id}" ${out ? 'disabled' : ''}>${out ? 'Indisponível' : 'Adicionar'}</button></article>`;
   }).join('');
   $$('.add').forEach(b => b.onclick = () => addItem(b.dataset.id, b));
@@ -153,7 +164,7 @@ function renderPromo() {
   $$('.slots span').forEach((s, i) => { const id = promo[i]; s.textContent = id ? productById(id).emoji : ''; s.classList.toggle('filled', !!id); });
   $('#promoProgress').style.width = percent + '%'; $('#promoCounter').textContent = `${count} de 3 escolhidas`;
   $('#promoChoices').innerHTML = products.map(p => {
-    const selected = promo.filter(x => x === p.id).length, out = p.stock <= 0, limit = stockReservedInCart(p.id) + selected >= p.stock;
+    const selected = promo.filter(x => x === p.id).length, out = p.unavailable || p.stock <= 0, limit = stockReservedInCart(p.id) + selected >= p.stock;
     return `<div class="choice ${out ? 'soldout' : ''}"><div class="emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.desc}</p><small>${out ? 'Indisponível' : `Estoque: ${p.stock} • Selecionadas: ${selected}`}</small><div class="qty"><button data-minus="${p.id}" ${selected === 0 ? 'disabled' : ''}>-</button><b>${selected}</b><button data-plus="${p.id}" ${(out || promo.length >= 3 || limit) ? 'disabled' : ''}>+</button></div></div>`;
   }).join('');
   $$('[data-plus]').forEach(b => b.onclick = () => promoPlus(b.dataset.plus, b));
@@ -166,7 +177,7 @@ function promoPlus(id, btn) { const p = productById(id); if (promo.length >= 3) 
 function promoMinus(id) { const idx = promo.lastIndexOf(id); if (idx >= 0) { promo.splice(idx, 1); renderPromo(); } }
 function addPromo() { if (promo.length !== 3) return; const flavors = promo.map(id => ({ id, name: productById(id).name, emoji: productById(id).emoji })); const item = { id: 'promo-' + Date.now(), name: 'Promoção 3 trufas', emoji: '🎁', qty: 1, price: 14, flavors }; if (!canAddPromoBatch(item, 0)) return say('Estoque insuficiente para essa promoção.'); cart.push(item); promo = []; save(); renderPromo(); renderCart(); jump('Promoção adicionada ao carrinho! 🛒'); }
 function suggestPromo() { promo = []; for (const id of ['maracuja', 'coco', 'oreo', 'brigadeiro']) { if (promo.length < 3 && productById(id).stock > stockReservedInCart(id) + promo.filter(x => x === id).length) promo.push(id); } renderPromo(); say('Minha sugestão equilibrada: Maracujá, Coco e Oreo. Uma cítrica, uma suave e uma mais docinha 💖'); }
-function addItem(id, btn) { const p = productById(id); if (!p || p.stock <= 0) return say(`${p?.name || 'Produto'} está indisponível hoje.`); if (!canAddProduct(id, 1)) return say(`Você atingiu o limite de estoque de ${p.name}.`); const item = cart.find(i => i.id === id && !i.flavors); if (item) item.qty++; else cart.push({ id: p.id, name: p.name, emoji: p.emoji, price: p.price, qty: 1 }); fly(btn, p.emoji); jump(`${p.name} foi para o carrinho! Excelente escolha 🍫`); save(); renderCart(); }
+function addItem(id, btn) { const p = productById(id); if (!p || p.unavailable || p.stock <= 0) return say(`${p?.name || 'Produto'} está indisponível hoje.`); if (!canAddProduct(id, 1)) return say(`Você atingiu o limite de estoque de ${p.name}.`); const item = cart.find(i => i.id === id && !i.flavors); if (item) item.qty++; else cart.push({ id: p.id, name: p.name, emoji: p.emoji, price: p.price, qty: 1 }); fly(btn, p.emoji); jump(`${p.name} foi para o carrinho! Excelente escolha 🍫`); save(); renderCart(); }
 
 function freeShippingProgress() { const sub = calc(), missing = Math.max(0, 30 - sub), pct = Math.min(100, (sub / 30) * 100); if (sub >= 30) return `<div class="freeShip unlocked"><b>🎉 Frete grátis desbloqueado!</b><small>Seu pedido passou de R$30,00.</small></div>`; return `<div class="freeShip"><b>🎁 Frete grátis acima de R$30,00</b><div class="freeBar"><i style="width:${pct}%"></i></div><small>Faltam ${BRL(missing)} para ganhar frete grátis.</small></div>`; }
 function deliveryFee() { const f = $('[name=fulfillment]:checked')?.value || 'retirada'; if (f !== 'entrega') return 0; if (calc() >= 30) return 0; if (deliveryInfo && deliveryInfo.applied && typeof deliveryInfo.fee === 'number') return deliveryInfo.fee; return 0; }
@@ -432,8 +443,50 @@ function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o)
 
 function aiAnswer(q) { q = q.toLowerCase(); if (/menos doce|não.*doce|nao.*doce|enjoativo/.test(q)) return '💛 Eu recomendo a trufa de Maracujá. O recheio cítrico equilibra muito bem o chocolate e deixa o sabor menos enjoativo. Se quiser algo mais suave, Coco também é uma ótima escolha.'; if (/promo|3|14/.test(q)) return '🎉 A promoção é 3 trufas por R$14. Você pode escolher Brigadeiro, Oreo, Maracujá e Coco, repetindo sabores se quiser. Exemplo: 3 Maracujá ou 2 Oreo + 1 Coco.'; if (/estoque|tem hoje|sabores/.test(q)) return 'Hoje temos: ' + products.map(p => `${p.emoji} ${p.name}: ${p.stock > 0 ? p.stock + ' disponíveis' : 'indisponível'}`).join(', ') + '.'; if (/20|vinte/.test(q)) return 'Com R$20 eu aproveitaria a promoção de 3 por R$14. Minha sugestão: Maracujá, Oreo e Brigadeiro.'; if (/presente|namorada|esposa|anivers/.test(q)) return '🎁 Para presente eu montaria uma caixa com Brigadeiro, Oreo, Maracujá e Coco. Fica bonita, variada e agrada vários gostos.'; if (/cart|dinheiro|pix|pagamento/.test(q)) return 'Para retirada aceitamos Pix, dinheiro ou cartão. Para entrega, somente Pix.'; return 'Me conta seu gosto: você prefere mais chocolate, mais docinha, mais suave ou mais equilibrada? Eu monto uma sugestão para você. 🍫'; }
 function addChat(t, who = 'bot') { if (!$('#chatLog')) return; $('#chatLog').innerHTML += `<div class="msg ${who}">${t}</div>`; $('#chatLog').scrollTop = $('#chatLog').scrollHeight; }
-async function requireFaceId(u) { if (!hasFaceId(u)) return true; if (window.PublicKeyCredential && navigator.credentials) { try { await navigator.credentials.get({ publicKey: { challenge: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]), timeout: 60000, userVerification: 'preferred' } }); return true; } catch { return confirm('Confirme o Face ID/Windows Hello para continuar. Se seu aparelho não abriu a biometria, clique em OK para confirmar manualmente.'); } } return confirm('Face ID/Windows Hello cadastrado. Confirmar acesso agora?'); }
-async function registerFaceId() { const u = ($('#user')?.value || currentAdmin || '').trim(), p = ($('#pass')?.value || '').trim(); if (!ADMIN_USERS[u]) return alert('Digite primeiro um usuário autorizado.'); if (!currentAdmin && p !== '30707420') return alert('Para cadastrar Face ID, primeiro informe usuário e senha corretos.'); localStorage.setItem(faceKey(u), 'enabled'); alert('Face ID/Windows Hello cadastrado para este usuário neste aparelho. A senha continuará sendo exigida primeiro.'); }
+async function requireFaceId(u) {
+  if (!hasFaceId(u)) return true;
+  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) {
+    alert('A biometria exige HTTPS e um navegador compatível. Entre usando a senha.');
+    return true;
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem(faceKey(u)) || '{}');
+    await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ id: base64ToBytes(saved.credentialId), type: 'public-key' }],
+      timeout: 60000,
+      userVerification: 'required'
+    }});
+    return true;
+  } catch (e) {
+    console.warn('Biometria cancelada ou indisponível', e);
+    alert('A confirmação biométrica foi cancelada. Tente novamente ou remova o cadastro biométrico deste navegador.');
+    return false;
+  }
+}
+async function registerFaceId() {
+  const u = ($('#user')?.value || currentAdmin || '').trim();
+  const p = ($('#pass')?.value || '').trim();
+  if (!ADMIN_USERS[u]) return alert('Digite primeiro um usuário autorizado.');
+  if (!currentAdmin && !p) return alert('Informe a senha e entre na central antes de cadastrar a biometria.');
+  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return alert('Face ID/Windows Hello exige o site publicado em HTTPS e um aparelho compatível.');
+  try {
+    const credential = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'Doce Encanto' },
+      user: { id: new TextEncoder().encode(u), name: u, displayName: ADMIN_USERS[u].name },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'preferred', userVerification: 'required' },
+      timeout: 60000,
+      attestation: 'none'
+    }});
+    localStorage.setItem(faceKey(u), JSON.stringify({ credentialId: bytesToBase64(credential.rawId), createdAt: new Date().toISOString() }));
+    alert('Face ID/Touch ID/Windows Hello cadastrado neste aparelho.');
+  } catch (e) {
+    console.error(e);
+    alert('Não foi possível cadastrar a biometria. Verifique se o site está em HTTPS e se a biometria está configurada no aparelho.');
+  }
+}
 async function loginAdmin(){const u=$('#user').value.trim(),p=$('#pass').value,email=ADMIN_EMAILS[u];if(!email)return alert('Usuário ou senha incorretos.');if(!supabaseReady)return alert('Configure o Supabase antes de acessar a central online.');const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';try{const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)throw error;const ok=await requireFaceId(u);if(!ok)return;currentAdmin=u;await loadAdminSupabaseState();subscribeAdminRealtime();$('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}catch(e){console.error(e);alert('Usuário ou senha incorretos, ou o usuário ainda não foi criado no Supabase.');}finally{btn.disabled=false;btn.textContent='Entrar';}}
 
 async function init() {
@@ -474,4 +527,63 @@ async function init() {
   enableEnterToNextField();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { });
 }
+
+
+// ===============================
+// V54 OFICIAL — FINANCEIRO, IMPRESSÃO E TAXAS
+// ===============================
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function orderDate(o){const d=o.createdAt?new Date(o.createdAt):null;return d&&!isNaN(d)?d:null;}
+function monthlyFinanceHtml(){
+  const delivered=orders.filter(orderIsDelivered);
+  const now=new Date(); const year=now.getFullYear();
+  const months=Array.from({length:12},(_,i)=>{const list=delivered.filter(o=>{const d=orderDate(o);return d&&d.getFullYear()===year&&d.getMonth()===i});const total=list.reduce((a,o)=>a+o.total,0);const freight=list.reduce((a,o)=>a+o.freight,0);const units=list.reduce((a,o)=>a+o.items.reduce((n,it)=>n+(it.flavors?it.flavors.length:1)*(it.qty||1),0),0);return {i,name:new Date(year,i,1).toLocaleDateString('pt-BR',{month:'long'}),count:list.length,total,freight,units};});
+  const annual=months.reduce((a,m)=>a+m.total,0);
+  return `<div class="financeSummary"><div class="dashCards"><div><small>Ano ${year}</small><b>${BRL(annual)}</b></div><div><small>Pedidos entregues</small><b>${delivered.filter(o=>orderDate(o)?.getFullYear()===year).length}</b></div><div><small>Taxas de entrega</small><b>${BRL(months.reduce((a,m)=>a+m.freight,0))}</b></div><div><small>Ticket médio</small><b>${BRL(annual/Math.max(1,months.reduce((a,m)=>a+m.count,0)))}</b></div></div><div class="monthGrid">${months.map(m=>`<article class="monthCard ${m.i===now.getMonth()?'current':''}"><h4>${m.name[0].toUpperCase()+m.name.slice(1)}</h4><b>${BRL(m.total)}</b><small>${m.count} pedidos • ${m.units} trufas</small><small>Fretes: ${BRL(m.freight)}</small></article>`).join('')}</div></div>`;
+}
+function receiptItems(o){return o.items.map(i=>i.flavors?`${i.qty||1}x PROMOÇÃO 3 TRUFAS\n${i.flavors.map(f=>'  - '+f.name).join('\n')}`:`${i.qty||1}x ${i.name}    ${BRL((i.price||5)*(i.qty||1))}`).join('\n');}
+function receiptText(o,kind='client'){
+ const addr=o.address||{}; const isDelivery=o.fulfillment==='entrega';
+ return `DOCE ENCANTO\n${'-'.repeat(32)}\n${kind==='production'?'VIA DA PRODUÇÃO':'VIA DO CLIENTE'}\nPEDIDO #${o.id}\n${isDelivery?'******** ENTREGA ********':'******* RETIRADA *******'}\n${'-'.repeat(32)}\nCliente: ${o.customerName}\nTelefone: ${o.customerPhone}\nPedido: ${o.created}\n${o.readyAt?'Pronto: '+o.readyAt+'\n':''}${isDelivery?`Endereço: ${addr.rua||''}, ${addr.numero||''}\nBairro: ${addr.bairro||o.deliveryRegion||''}\nCEP: ${addr.cep||''}\n`:''}${'-'.repeat(32)}\n${receiptItems(o)}\n${'-'.repeat(32)}\nSubtotal: ${BRL(o.subtotal)}\nFrete: ${BRL(o.freight)}\nTOTAL: ${BRL(o.total)}\nPagamento: ${o.paymentLabel||o.payment}\n${'-'.repeat(32)}\nObrigado pela preferência!`;
+}
+function printReceipt(id,mode='both'){
+ const o=orders.find(x=>x.id===id); if(!o)return alert('Pedido não encontrado.');
+ const parts=mode==='both'?[receiptText(o,'production'),receiptText(o,'client')]:[receiptText(o,mode)];
+ const w=window.open('','_blank','width=420,height=700'); if(!w)return alert('Libere pop-ups para imprimir.');
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pedido ${escapeHtml(o.id)}</title><style>@page{size:${printPaperWidth}mm auto;margin:2mm}body{font-family:monospace;width:${printPaperWidth-4}mm;margin:0;font-size:11px}.ticket{white-space:pre-wrap;page-break-after:always}.ticket:last-child{page-break-after:auto}</style></head><body>${parts.map(t=>`<div class="ticket">${escapeHtml(t)}</div>`).join('')}<script>onload=()=>setTimeout(()=>print(),250)<\/script></body></html>`);w.document.close();
+}
+async function markReadyAndPrint(id){await setOrderStatusAndNotify(id,'Pronto','ready');setTimeout(()=>printReceipt(id,'both'),250);}
+function renderZoneRows(){const q=normalizeText(deliveryZoneSearch);const rows=deliveryZonesDraft.filter(z=>!q||normalizeText(z.name).includes(q));if(!rows.length)return '<p class="emptyState">Nenhum bairro encontrado.</p>';return rows.map((z,i)=>`<div class="zoneRow" data-zone-id="${z.id||''}"><input data-zone-name="${i}" value="${escapeHtml(z.name)}" placeholder="Nome do bairro"><input data-zone-fee="${i}" type="number" min="0" step="0.50" value="${Number(z.fee).toFixed(2)}"><label><input data-zone-active="${i}" type="checkbox" ${z.active?'checked':''}> Ativo</label><button class="dangerBtn" data-zone-remove="${i}">Excluir</button></div>`).join('');}
+function syncZoneDraftFromInputs(){$$('[data-zone-name]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneName].name=i.value.trim());$$('[data-zone-fee]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneFee].fee=Math.max(0,Number(i.value)||0));$$('[data-zone-active]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneActive].active=i.checked);}
+async function saveDeliveryZones(){syncZoneDraftFromInputs();const valid=deliveryZonesDraft.filter(z=>z.name.trim());const {error}=await supabaseClient.rpc('admin_save_delivery_zones',{p_zones:valid});if(error)throw error;await loadAdminSupabaseState();renderAdmin();alert('Taxas salvas e atualizadas para os clientes.');}
+async function resetOfficialData(){const typed=prompt('Para apagar pedidos e movimentações de teste, digite ZERAR TESTES');if(typed!=='ZERAR TESTES')return alert('Limpeza cancelada.');if(!confirm('Confirma a limpeza? Produtos, estoque atual, usuários e taxas serão preservados.'))return;const {error}=await supabaseClient.rpc('admin_reset_test_data');if(error)throw error;cart=[];localStorage.removeItem(STORE+'orders');localStorage.removeItem(STORE+'stockMoves');await loadAdminSupabaseState();renderAdmin();alert('Pedidos, faturamento e movimentações foram zerados com segurança.');}
+function zoneMapHtml(){return `<div class="mapBox"><iframe title="Mapa de bairros" src="https://www.openstreetmap.org/export/embed.html?bbox=-44.05%2C-20.02%2C-43.85%2C-19.82&amp;layer=mapnik" loading="lazy"></iframe><p><a href="https://www.openstreetmap.org/search?query=Belo%20Horizonte%20MG" target="_blank" rel="noopener">Abrir mapa e pesquisar localização</a></p><small>O mapa ajuda a localizar o bairro. O valor cobrado é sempre o cadastrado e salvo na tabela acima.</small></div>`;}
+
+function renderAdmin(){
+ const pending=orders.filter(o=>!orderIsDelivered(o)&&!orderIsCanceled(o)),history=orders.filter(o=>orderIsDelivered(o)||orderIsCanceled(o)),production=pending.filter(orderIsProduction),deliveredRevenue=orders.filter(orderIsDelivered).reduce((a,o)=>a+o.total,0),low=products.filter(p=>!p.unavailable&&p.stock<=p.min).length;
+ $('#adminPanel').innerHTML=`<div class="adminHero"><div><p class="tag">Centro de Controle V54</p><h2>Área da Empresa</h2><p>Pedidos, estoque, financeiro mensal, impressão térmica e taxas de entrega online.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro mensal</button><button data-tabbtn="zones">🛵 Taxas</button><button data-tabbtn="settings">⚙️ Configurações</button></div>
+ <div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div>
+ <div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Produção</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o=>normalizeText(o.status)==='recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o=>['producao','produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o=>['pronto','saiu para entrega','aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div>
+ <div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico</h3>${renderHistory(history)}</section></div>
+ <div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><div class="stockTable">${products.filter(p=>!p.unavailable).map(p=>{const [label,cls,act]=stockStatus(p);return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="0" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`}).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div>
+ <div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Movimentações</h3>${renderStockMoves()}</section></div>
+ <div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Faturamento por mês</h3><p class="helper">Somente pedidos marcados como Entregue entram no faturamento.</p>${monthlyFinanceHtml()}</section></div>
+ <div class="tabPanel" data-tab="zones"><section class="adminCard wide"><h3>🛵 Taxas de entrega</h3><div class="zoneToolbar"><input id="zoneSearch" value="${escapeHtml(deliveryZoneSearch)}" placeholder="Pesquisar bairro"><button id="zoneAdd" class="secondary">+ Adicionar bairro</button></div><div id="zoneRows">${renderZoneRows()}</div><div class="zoneActions"><button id="zoneSave" class="primary">Salvar alterações</button><button id="zoneDiscard" class="ghost">Descartar alterações</button></div>${zoneMapHtml()}</section></div>
+ <div class="tabPanel" data-tab="settings"><section class="adminCard wide"><h3>⚙️ Configurações</h3><label>Largura da mini impressora <select id="paperWidth"><option value="58" ${printPaperWidth===58?'selected':''}>58 mm</option><option value="80" ${printPaperWidth===80?'selected':''}>80 mm</option></select></label><hr><h4>Início oficial</h4><p>Apaga pedidos, faturamento e movimentações de teste. Mantém produtos, estoque atual, usuários e taxas.</p><button id="resetOfficial" class="dangerBtn">Zerar testes e iniciar oficialmente</button></section></div>`;
+ $('#adminBack').onclick=()=>location.hash='home';$('#adminLogout').onclick=async()=>{await supabaseClient?.auth.signOut();currentAdmin=null;orders=[];stockMoves=[];$('#adminPanel').classList.add('hidden');$('.login').classList.remove('hidden')};
+ $$('[data-tabbtn]').forEach(btn=>btn.onclick=()=>{$$('[data-tabbtn]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$$('[data-tab]').forEach(p=>p.classList.toggle('active',p.dataset.tab===btn.dataset.tabbtn))});
+ $('#saveStock')?.addEventListener('click',async()=>{try{for(const inp of $$('[data-stock]')){const id=inp.dataset.stock,minInp=$(`[data-min="${id}"]`);const {error}=await supabaseClient.rpc('admin_set_inventory',{p_flavor_id:id,p_stock:Math.max(0,Number(inp.value)||0),p_min_stock:Math.max(0,Number(minInp?.value)||0)});if(error)throw error}await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();alert('Estoque salvo.')}catch(e){alert(e.message)}});
+ $$('[data-status]').forEach(sel=>sel.onchange=()=>setOrderStatusAndNotify(sel.dataset.status,sel.value));$$('[data-next]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.next);if(o)setOrderStatusAndNotify(o.id,nextProductionStatus(o.status,o.fulfillment))});$$('[data-ready]').forEach(btn=>btn.onclick=()=>markReadyAndPrint(btn.dataset.ready));$$('[data-delivery]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivery,'Saiu para entrega','delivery'));$$('[data-delivered]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivered,'Entregue','delivered'));$$('[data-chat]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.chat);if(o)openClientWhatsApp(o,'')});$$('[data-cancel]').forEach(btn=>btn.onclick=()=>{if(confirm('Cancelar e devolver o estoque?'))setOrderStatusAndNotify(btn.dataset.cancel,'Cancelado','canceled')});
+ // add print buttons to each order card
+ $$('.orderCard').forEach(card=>{const id=card.querySelector('[data-status]')?.dataset.status;if(id){const actions=card.querySelector('.orderActions');actions?.insertAdjacentHTML('beforeend',`<button class="ghost" data-print="${id}">🖨️ Reimprimir</button>`);}});$$('[data-print]').forEach(b=>b.onclick=()=>printReceipt(b.dataset.print,'both'));
+ $('#zoneSearch')?.addEventListener('input',e=>{syncZoneDraftFromInputs();deliveryZoneSearch=e.target.value;$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons()});$('#zoneAdd')?.addEventListener('click',()=>{syncZoneDraftFromInputs();deliveryZonesDraft.push({id:null,name:'',fee:5,active:true,latitude:null,longitude:null});$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons();$('#zoneRows input:last-of-type')?.focus()});$('#zoneSave')?.addEventListener('click',()=>saveDeliveryZones().catch(e=>alert(e.message)));$('#zoneDiscard')?.addEventListener('click',()=>{deliveryZonesDraft=deliveryZones.map(x=>({...x}));deliveryZoneSearch='';renderAdmin()});bindZoneButtons();
+ $('#paperWidth')?.addEventListener('change',e=>{printPaperWidth=Number(e.target.value);localStorage.setItem(STORE+'paperWidth',String(printPaperWidth));alert('Tamanho salvo.')});$('#resetOfficial')?.addEventListener('click',()=>resetOfficialData().catch(e=>alert(e.message)));
+}
+function bindZoneButtons(){$$('[data-zone-remove]').forEach(b=>b.onclick=()=>{syncZoneDraftFromInputs();deliveryZonesDraft.splice(+b.dataset.zoneRemove,1);$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons()})}
+
+// WebAuthn local: usa biometria do dispositivo; a senha do Supabase continua sendo a autenticação principal.
+async function registerFaceId(){const u=($('#user')?.value||currentAdmin||'').trim(),p=($('#pass')?.value||'').trim();if(!ADMIN_USERS[u])return alert('Digite um usuário autorizado.');if(!window.isSecureContext||!window.PublicKeyCredential||!navigator.credentials)return alert('A biometria exige site HTTPS e navegador compatível.');if(!currentAdmin){const email=ADMIN_EMAILS[u];const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)return alert('Usuário ou senha incorretos.');}
+ const challenge=crypto.getRandomValues(new Uint8Array(32)),userId=new TextEncoder().encode(u.padEnd(16,'0').slice(0,32));try{const cred=await navigator.credentials.create({publicKey:{challenge,rp:{name:'Doce Encanto'},user:{id:userId,name:u,displayName:ADMIN_USERS[u].name},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},timeout:60000,attestation:'none'}});localStorage.setItem(faceKey(u),JSON.stringify({id:Array.from(new Uint8Array(cred.rawId))}));alert('Face ID/Windows Hello cadastrado neste aparelho.')}catch(e){alert('Não foi possível cadastrar: '+(e.message||e.name))}}
+async function requireFaceId(u){const raw=localStorage.getItem(faceKey(u));if(!raw)return true;if(!window.isSecureContext||!navigator.credentials)return confirm('Biometria indisponível. Continuar somente com a senha?');try{const saved=JSON.parse(raw),challenge=crypto.getRandomValues(new Uint8Array(32));await navigator.credentials.get({publicKey:{challenge,allowCredentials:[{type:'public-key',id:new Uint8Array(saved.id)}],userVerification:'required',timeout:60000}});return true}catch(e){alert('Biometria não confirmada.');return false}}
+
 init();
