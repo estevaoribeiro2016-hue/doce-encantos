@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
 
     const select = [
       'id', 'total', 'payment', 'payment_status', 'customer_name',
-      'customer_phone', 'mp_payment_id', 'pix_qr_code', 'pix_qr_code_base64',
+      'customer_phone', 'customer_email', 'mp_payment_id', 'pix_qr_code', 'pix_qr_code_base64',
       'pix_expiration', 'pix_generation', 'status'
     ].join(',');
     const rows = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=${select}`);
@@ -52,6 +52,10 @@ module.exports = async function handler(req, res) {
     const nameParts = customerName.split(/\s+/).filter(Boolean);
     const firstName = nameParts.shift() || 'Cliente';
     const lastName = nameParts.join(' ') || 'Doce Encanto';
+    const payerEmail = String(order.customer_email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payerEmail)) {
+      return json(res, 400, { error: 'O pedido não possui um e-mail válido. Atualize os dados do cliente e tente novamente.' });
+    }
 
     const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -68,7 +72,7 @@ module.exports = async function handler(req, res) {
         notification_url: `${siteUrl}/api/mercadopago-webhook?source_news=webhooks`,
         date_of_expiration: expires,
         payer: {
-          email: `pedido.${String(order.id).toLowerCase().replace(/[^a-z0-9]/g, '')}@doceencanto.com.br`,
+          email: payerEmail,
           first_name: firstName,
           last_name: lastName
         },
