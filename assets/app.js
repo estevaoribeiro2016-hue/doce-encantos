@@ -556,7 +556,12 @@ async function init() {
   $('#goCheckout').onclick = () => { $('#cartDrawer').classList.remove('open'); $('#overlay').classList.remove('show'); };
   $$('[name=fulfillment]').forEach(r => r.onchange = () => { const entrega = $('[name=fulfillment]:checked').value === 'entrega'; $('#addressBox').classList.toggle('hidden', !entrega); $('#storeAddress').classList.toggle('hidden', entrega); resetDeliveryQuote(); if (entrega) { $('#payment').value = 'pix'; pointPix('Para entrega, usamos Pix e envio por Uber Moto. Informe o endereço para aplicar o frete por bairro. Frete grátis acima de R$30 💖'); } renderCart(); });
   $('#payment').onchange = () => { if ($('[name=fulfillment]:checked').value === 'entrega' && $('#payment').value !== 'pix') { $('#payment').value = 'pix'; alert('Para entrega, somente Pix.'); } if ($('#payment').value === 'pix') pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱'); };
-  $('#copyPix').onclick = () => navigator.clipboard?.writeText($('#pixCode').value).then(() => alert('Pix copia e cola copiado!'));
+  // O Pix da V56 usa o botão dinâmico dentro do modal. Mantém compatibilidade apenas se o botão antigo existir.
+  $('#copyPix')?.addEventListener('click', () => {
+    const pixCode = $('#pixCode')?.value || '';
+    if (!pixCode) return;
+    navigator.clipboard?.writeText(pixCode).then(() => alert('Pix copia e cola copiado!'));
+  });
   $('#finishOrder').onclick = finish; $('#pixModalClose')?.addEventListener('click',closePixModal); $('#pixModal')?.addEventListener('click',e=>{if(e.target.id==='pixModal')closePixModal()}); $('#addPromo').onclick = addPromo; $('#resetPromo').onclick = () => { promo = []; renderPromo(); }; $('#suggestPromo').onclick = suggestPromo;
   $('#aiForm').onsubmit = e => { e.preventDefault(); const q = $('#aiInput').value.trim(); if (!q) return; addChat(q, 'user'); const a = aiAnswer(q); setTimeout(() => { addChat(a); say(a.split('.')[0] + '.'); }, 160); $('#aiInput').value = ''; };
   $$('.chips button').forEach(b => b.onclick = () => { $('#aiInput').value = b.dataset.q; $('#aiForm').dispatchEvent(new Event('submit')); });
