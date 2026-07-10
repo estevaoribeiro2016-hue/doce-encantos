@@ -1,20 +1,6 @@
 {
   "cleanUrls": true,
   "functions": {
-    "api/*.js": { "maxDuration": 10 }
-  },
-  "headers": [
-    {
-      "source": "/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
-    },
-    {
-      "source": "/assets/app.js",
-      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
-    },
-    {
-      "source": "/service-worker.js",
-      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
-    }
-  ]
+    "api/*.js": { "maxDuration": 15 }
+  }
 }

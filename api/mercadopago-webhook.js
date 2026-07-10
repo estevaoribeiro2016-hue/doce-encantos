@@ -1,58 +1,21 @@
-const { json, requiredEnv, supabaseRequest, parseBody, validateWebhookSignature } = require('./_helpers');
-
+const { json, readJson, supabaseRequest, mercadoPagoRequest, extractPaymentId, verifyWebhook } = require('./_shared');
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return json(res, 405, { error: 'Método não permitido.' });
-
+  if (req.method === 'GET') return json(res, 200, { ok: true, webhook: 'mercadopago', version: '56.7' });
+  if (req.method !== 'POST') return json(res, 405, { ok: false });
   try {
-    const body = parseBody(req);
-    const dataId = req.query?.['data.id'] || req.query?.id || body?.data?.id || body?.id;
-    const type = req.query?.type || req.query?.topic || body?.type || body?.topic || body?.action?.split('.')?.[0];
-    const normalizedType = String(type || '').toLowerCase();
-    if (!dataId || (normalizedType && !['payment','payments'].includes(normalizedType))) {
-      return json(res, 200, { received: true, ignored: true });
-    }
-
-    const signature = validateWebhookSignature(req, dataId);
-    if (!signature.valid) return json(res, 401, { error: 'Assinatura inválida.' });
-    if (!signature.configured) console.warn('MP_WEBHOOK_SECRET ainda não configurado; validação feita consultando a API do Mercado Pago.');
-
-    const accessToken = requiredEnv('MP_ACCESS_TOKEN');
-    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(dataId)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    const payment = await mpResponse.json().catch(() => ({}));
-    if (!mpResponse.ok) throw new Error(payment?.message || 'Falha ao consultar pagamento.');
-
-    const orderId = payment.external_reference || payment.metadata?.order_id;
-    if (!orderId) return json(res, 200, { received: true, ignored: 'sem pedido' });
-
-    const orders = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,total,payment_status,mp_payment_id`);
-    const order = orders?.[0];
-    if (!order) return json(res, 200, { received: true, ignored: 'pedido não encontrado' });
-
-    if (Math.abs(Number(order.total) - Number(payment.transaction_amount)) > 0.009) {
-      throw new Error('Valor do pagamento não confere com o pedido.');
-    }
-
-    const patch = {
-      mp_payment_id: String(payment.id),
-      payment_status: payment.status || 'unknown',
-      payment_status_detail: payment.status_detail || null,
-      payment_updated_at: new Date().toISOString(),
-      payment_approved_at: payment.status === 'approved'
-        ? (payment.date_approved || new Date().toISOString())
-        : null
-    };
-
-    await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify(patch)
-    });
-
-    return json(res, 200, { received: true, orderId, status: patch.payment_status });
+    const body = await readJson(req);
+    const paymentId = extractPaymentId(req, body);
+    if (!paymentId) return json(res, 200, { ok: true, ignored: true });
+    if (!verifyWebhook(req, paymentId)) return json(res, 401, { ok: false, error: 'Assinatura inválida.' });
+    const payment = await mercadoPagoRequest(`/v1/payments/${encodeURIComponent(paymentId)}`);
+    const orderId = String(payment.external_reference || '').trim();
+    if (!orderId) return json(res, 200, { ok: true, ignored: true });
+    const patch = { mp_payment_id: String(payment.id), mp_status: payment.status || 'pending', mp_status_detail: payment.status_detail || null, payment_updated_at: new Date().toISOString() };
+    if (payment.status === 'approved') patch.payment_paid_at = payment.date_approved || new Date().toISOString();
+    await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}`, { method:'PATCH', headers:{Prefer:'return=minimal'}, body:JSON.stringify(patch) });
+    return json(res, 200, { ok: true });
   } catch (error) {
     console.error('mercadopago-webhook', error);
-    return json(res, 500, { error: error.message || 'Erro no webhook.' });
+    return json(res, 500, { ok: false, error: error.message || 'Erro no webhook.' });
   }
 };

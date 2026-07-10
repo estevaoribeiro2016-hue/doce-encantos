@@ -1,125 +1,48 @@
-const { json, requiredEnv, supabaseRequest, parseBody, requestBaseUrl } = require('./_helpers');
-
-const REUSABLE_STATUSES = new Set(['pending', 'in_process']);
-
+const { json, readJson, supabaseRequest, mercadoPagoRequest, siteUrl, firstName, uuid } = require('./_shared');
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return json(res, 405, { error: 'Método não permitido.' });
-
+  if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'Método não permitido.' });
   try {
-    const { orderId } = parseBody(req);
-    if (!orderId || !/^[A-Z0-9-]{6,40}$/i.test(orderId)) {
-      return json(res, 400, { error: 'Pedido inválido.' });
+    const body = await readJson(req);
+    const orderId = String(body.orderId || '').trim();
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!orderId) return json(res, 400, { ok: false, error: 'Pedido não informado.' });
+    if (!/^\S+@\S+\.\S+$/.test(email)) return json(res, 400, { ok: false, error: 'Informe um e-mail válido para gerar o Pix.' });
+
+    const rows = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=id,customer_name,customer_phone,total,payment,mp_payment_id,mp_status,pix_qr_code,pix_qr_code_base64,pix_expires_at`);
+    const order = Array.isArray(rows) ? rows[0] : null;
+    if (!order) return json(res, 404, { ok: false, error: 'Pedido não encontrado.' });
+    if (order.payment !== 'pix') return json(res, 400, { ok: false, error: 'Este pedido não utiliza Pix.' });
+
+    if (order.mp_payment_id && order.pix_qr_code && !['cancelled','rejected'].includes(String(order.mp_status || '').toLowerCase())) {
+      return json(res, 200, { ok: true, reused: true, paymentId: order.mp_payment_id, status: order.mp_status, qrCode: order.pix_qr_code, qrCodeBase64: order.pix_qr_code_base64, expiresAt: order.pix_expires_at });
     }
 
-    const select = [
-      'id', 'total', 'payment', 'payment_status', 'customer_name',
-      'customer_phone', 'customer_email', 'mp_payment_id', 'pix_qr_code', 'pix_qr_code_base64',
-      'pix_expiration', 'pix_generation', 'status'
-    ].join(',');
-    const rows = await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}&select=${select}`);
-    const order = rows?.[0];
-
-    if (!order) return json(res, 404, { error: 'Pedido não encontrado.' });
-    if (order.payment !== 'pix') return json(res, 400, { error: 'Este pedido não utiliza Pix.' });
-    if (String(order.status || '').toLowerCase() === 'cancelado') {
-      return json(res, 409, { error: 'Pedido cancelado.' });
-    }
-
-    const expirationDate = order.pix_expiration ? new Date(order.pix_expiration) : null;
-    const stillValid = expirationDate && expirationDate.getTime() > Date.now();
-    if (
-      order.mp_payment_id && order.pix_qr_code && order.pix_qr_code_base64 &&
-      REUSABLE_STATUSES.has(order.payment_status) && stillValid
-    ) {
-      return json(res, 200, {
-        paymentId: order.mp_payment_id,
-        status: order.payment_status,
-        qrCode: order.pix_qr_code,
-        qrCodeBase64: order.pix_qr_code_base64,
-        expiration: order.pix_expiration,
-        reused: true
-      });
-    }
-
-    // Faz a validação das credenciais antes de chamar serviços externos para retornar um erro claro.
-    requiredEnv('SUPABASE_URL');
-    requiredEnv('SUPABASE_SERVICE_ROLE_KEY', ['SUPABASE_SERVICE_ROLE', 'SUPABASE_SERVICE_KEY', 'SUPABASE_SECRET_KEY']);
-    const accessToken = requiredEnv('MP_ACCESS_TOKEN');
-    const siteUrl = requestBaseUrl(req);
-    const nextGeneration = Number(order.pix_generation || 0) + 1;
     const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    const customerName = String(order.customer_name || 'Cliente').trim();
-    const nameParts = customerName.split(/\s+/).filter(Boolean);
-    const firstName = nameParts.shift() || 'Cliente';
-    const lastName = nameParts.join(' ') || 'Doce Encanto';
-    const payerEmail = String(order.customer_email || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payerEmail)) {
-      return json(res, 400, { error: 'O pedido não possui um e-mail válido. Atualize os dados do cliente e tente novamente.' });
-    }
-
-    const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+    const payment = await mercadoPagoRequest('/v1/payments', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': `doce-encanto-${order.id}-pix-${nextGeneration}`
-      },
+      headers: { 'X-Idempotency-Key': uuid() },
       body: JSON.stringify({
         transaction_amount: Number(order.total),
-        description: `Doce Encanto - Pedido ${order.id}`,
+        description: `Pedido Doce Encanto #${order.id}`.slice(0, 120),
         payment_method_id: 'pix',
         external_reference: order.id,
-        notification_url: `${siteUrl}/api/mercadopago-webhook?source_news=webhooks`,
+        notification_url: `${siteUrl(req)}/api/mercadopago-webhook`,
         date_of_expiration: expires,
-        payer: {
-          email: payerEmail,
-          first_name: firstName,
-          last_name: lastName
-        },
-        metadata: {
-          order_id: order.id,
-          recipient_name: 'Estevao Ribeiro',
-          pix_generation: nextGeneration
-        }
+        payer: { email, first_name: firstName(order.customer_name) }
       })
     });
-
-    const mp = await mpResponse.json().catch(() => ({}));
-    if (!mpResponse.ok) {
-      const cause = Array.isArray(mp?.cause) ? mp.cause.map(c => c.description || c.code).filter(Boolean).join(' • ') : '';
-      throw new Error(cause || mp?.message || 'Mercado Pago recusou a criação do Pix.');
-    }
-
-    const tx = mp.point_of_interaction?.transaction_data || {};
-    if (!tx.qr_code || !tx.qr_code_base64) {
-      throw new Error('Mercado Pago não retornou o QR Code Pix.');
-    }
+    const tx = payment?.point_of_interaction?.transaction_data || {};
+    if (!tx.qr_code || !tx.qr_code_base64) throw new Error('O Mercado Pago não retornou o QR Code do Pix.');
 
     await supabaseRequest(`orders?id=eq.${encodeURIComponent(order.id)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        mp_payment_id: String(mp.id),
-        payment_status: mp.status || 'pending',
-        payment_status_detail: mp.status_detail || null,
-        pix_qr_code: tx.qr_code,
-        pix_qr_code_base64: tx.qr_code_base64,
-        pix_expiration: mp.date_of_expiration || expires,
-        pix_generation: nextGeneration,
-        payment_updated_at: new Date().toISOString()
-      })
+      body: JSON.stringify({ customer_email: email, mp_payment_id: String(payment.id), mp_status: payment.status || 'pending', mp_status_detail: payment.status_detail || null, pix_qr_code: tx.qr_code, pix_qr_code_base64: tx.qr_code_base64, pix_ticket_url: tx.ticket_url || null, pix_expires_at: payment.date_of_expiration || expires, payment_updated_at: new Date().toISOString() })
     });
 
-    return json(res, 200, {
-      paymentId: String(mp.id),
-      status: mp.status || 'pending',
-      qrCode: tx.qr_code,
-      qrCodeBase64: tx.qr_code_base64,
-      expiration: mp.date_of_expiration || expires,
-      reused: false
-    });
+    return json(res, 200, { ok: true, paymentId: String(payment.id), status: payment.status || 'pending', qrCode: tx.qr_code, qrCodeBase64: tx.qr_code_base64, ticketUrl: tx.ticket_url || null, expiresAt: payment.date_of_expiration || expires });
   } catch (error) {
     console.error('create-pix', error);
-    return json(res, 500, { error: error.message || 'Erro ao gerar Pix.' });
+    return json(res, 500, { ok: false, error: error.message || 'Não foi possível gerar o Pix.' });
   }
 };

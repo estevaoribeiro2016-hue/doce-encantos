@@ -11,7 +11,7 @@ const BASE_PRODUCTS = [
   { id: 'uva-verde', name: 'Uva Verde', emoji: '🍇', price: 5, stock: 0, min: 0, unavailable: true, desc: 'Sabor de uva verde. Visível no cardápio e indisponível no momento.' }
 ];
 
-const STORE = 'de_v56_';
+const STORE = 'de_v54_';
 const LEGACY_STORES = ['de_v40_', 'de_v41_', 'de_v42_'];
 const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 const DELIVERY_MODE = 'Uber Moto';
@@ -36,7 +36,7 @@ async function initSupabase(){if(!window.supabase||!isSupabaseConfigured()){cons
 function supabaseStatusHtml(){return supabaseReady?'<span class="pill ok">🟢 Banco online conectado</span>':'<span class="pill danger">🔴 Banco online não configurado</span>';}
 async function loadPublicInventory(){if(!supabaseClient)return;const [inv,zones]=await Promise.all([supabaseClient.from('inventory').select('*').order('flavor_id'),supabaseClient.from('delivery_zones').select('*').eq('active',true).order('name')]);if(inv.error)throw inv.error;if(zones.error)console.warn(zones.error);if(inv.data?.length){inventory=inv.data.map(r=>({id:r.flavor_id,stock:Number(r.stock||0),min:Number(r.min_stock||0)}));products=BASE_PRODUCTS.map(p=>({...p,...(inventory.find(i=>i.id===p.id)||{})}));}deliveryZones=(zones.data||[]).map(z=>({id:z.id,name:z.name,normalizedName:z.normalized_name,fee:Number(z.fee||0),active:!!z.active,latitude:z.latitude,longitude:z.longitude}));saveLocalOnly();}
 async function loadAdminSupabaseState(){if(!supabaseClient)return;const [o,m,z]=await Promise.all([supabaseClient.from('orders').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(1000),supabaseClient.from('delivery_zones').select('*').order('name')]);if(o.error)throw o.error;if(m.error)throw m.error;if(z.error)throw z.error;orders=(o.data||[]).map(orderFromSupabase);stockMoves=(m.data||[]).map(moveFromSupabase);deliveryZones=(z.data||[]).map(x=>({id:x.id,name:x.name,normalizedName:x.normalized_name,fee:Number(x.fee||0),active:!!x.active,latitude:x.latitude,longitude:x.longitude}));deliveryZonesDraft=deliveryZones.map(x=>({...x}));saveLocalOnly();}
-function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,customerEmail:r.customer_email||'',items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,paymentStatus:r.payment_status||'pending',mpPaymentId:r.mp_payment_id||'',pixExpiration:r.pix_expiration||'',status:r.status,stockRestored:!!r.stock_restored,createdAt:r.created_at,readyAt:r.ready_at?new Date(r.ready_at).toLocaleString('pt-BR'):'',deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
+function orderFromSupabase(r){return{id:r.id,created:r.created_label||new Date(r.created_at).toLocaleString('pt-BR'),customerName:r.customer_name,customerPhone:r.customer_phone,items:r.items||[],subtotal:Number(r.subtotal||0),freight:Number(r.freight||0),total:Number(r.total||0),fulfillment:r.fulfillment,deliveryMethod:r.delivery_method,deliveryRegion:r.delivery_region,address:r.address,payment:r.payment,paymentLabel:r.payment_label,status:r.status,stockRestored:!!r.stock_restored,createdAt:r.created_at,readyAt:r.ready_at?new Date(r.ready_at).toLocaleString('pt-BR'):'',deliveredAt:r.delivered_at?new Date(r.delivered_at).toLocaleString('pt-BR'):'',customerEmail:r.customer_email||'',mpPaymentId:r.mp_payment_id||'',mpStatus:r.mp_status||'',paymentPaidAt:r.payment_paid_at||'',canceledAt:r.canceled_at?new Date(r.canceled_at).toLocaleString('pt-BR'):''};}
 function moveFromSupabase(r){return{id:r.id,date:new Date(r.created_at).toLocaleString('pt-BR'),type:r.type,productId:r.flavor_id,productName:r.flavor_name,emoji:r.emoji,qty:Number(r.qty||0),reason:r.reason,orderId:r.order_id||''};}
 function subscribeInventoryRealtime(){if(!supabaseClient)return;supabaseClient.channel('public-inventory-v50').on('postgres_changes',{event:'*',schema:'public',table:'inventory'},async()=>{await loadPublicInventory();renderProducts();renderPromo();renderCart();if(currentAdmin)renderAdmin();}).subscribe();}
 function subscribeAdminRealtime(){if(!supabaseClient)return;if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);realtimeChannel=supabaseClient.channel('admin-v50').on('postgres_changes',{event:'*',schema:'public',table:'orders'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'stock_movements'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).on('postgres_changes',{event:'*',schema:'public',table:'delivery_zones'},async()=>{await loadAdminSupabaseState();if(currentAdmin)renderAdmin();}).subscribe();}
@@ -382,50 +382,58 @@ function normalizePaymentLabel(v) {
   if (v === 'cartao') return 'Cartão';
   return v || 'Não informado';
 }
-async function createPixForOrder(order){
-  const response=await fetch('/api/create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:order.id})});
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(result.error||'Não foi possível gerar o Pix.');
-  return result;
-}
 let pixStatusTimer=null;
-function closePixModal(){const m=$('#pixModal');if(m)m.classList.add('hidden');if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}}
-async function fetchPixStatus(orderId){
-  const response=await fetch(`/api/payment-status?orderId=${encodeURIComponent(orderId)}`,{cache:'no-store'});
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(result.error||'Não foi possível consultar o pagamento.');
-  return result;
+function validEmail(v){return /^\S+@\S+\.\S+$/.test(String(v||'').trim());}
+function showPixModal(order){
+  $('#pixModal')?.classList.remove('hidden');
+  if($('#pixOrderSummary')) $('#pixOrderSummary').textContent=`Pedido #${order.id} • ${BRL(order.total)}`;
+  $('#pixLoading')?.classList.remove('hidden');
+  $('#pixError')?.classList.add('hidden');
+  $('#pixResult')?.classList.add('hidden');
 }
-function paymentStatusText(status){
-  if(status==='approved')return 'Pagamento confirmado! ✅';
-  if(status==='pending'||status==='in_process')return 'Aguardando pagamento do Pix…';
-  if(status==='expired')return 'Este Pix expirou. Gere um novo código.';
-  if(status==='rejected'||status==='cancelled')return 'Pagamento não aprovado. Gere um novo Pix.';
-  return `Status do pagamento: ${status||'desconhecido'}`;
-}
-function showPixModal(order,pix=null,error=''){
-  const modal=$('#pixModal'),loading=$('#pixLoading'),generated=$('#pixGenerated'),errorBox=$('#pixError');
-  if(!modal)return;
+function hidePixModal(){
+  $('#pixModal')?.classList.add('hidden');
   if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}
-  modal.classList.remove('hidden');
-  $('#pixOrderInfo').textContent=`Pedido #${order.id} • ${BRL(order.total)}`;
-  loading.classList.toggle('hidden',!!pix||!!error);
-  generated.classList.toggle('hidden',!pix);
-  errorBox.classList.toggle('hidden',!error);
-  if(error)errorBox.innerHTML=`<b>O pedido foi salvo, mas o Pix não foi gerado.</b><br>${error}<br><button id="retryPix" class="secondary full" type="button">Tentar gerar novamente</button>`;
-  if(pix){
-    $('#dynamicPixQr').src=`data:image/png;base64,${pix.qrCodeBase64}`;
-    $('#dynamicPixCode').value=pix.qrCode||'';
-    $('#pixExpiry').textContent=pix.expiration?`Válido até ${new Date(pix.expiration).toLocaleString('pt-BR')}.`:'Pix aguardando pagamento.';
-    const statusBox=$('#pixPaymentStatus');
-    if(statusBox)statusBox.textContent=paymentStatusText(pix.status);
-    $('#copyDynamicPix').onclick=async()=>{try{await navigator.clipboard.writeText(pix.qrCode||'');$('#copyDynamicPix').textContent='Pix copiado!';setTimeout(()=>$('#copyDynamicPix').textContent='Copiar Pix copia e cola',1800)}catch{alert('Não foi possível copiar automaticamente. Selecione o código e copie manualmente.')}};
-    const check=async(showAlert=false)=>{try{const result=await fetchPixStatus(order.id);if(statusBox)statusBox.textContent=paymentStatusText(result.status);if(result.status==='approved'){if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}if(showAlert)alert('Pagamento confirmado! ✅');}else if(showAlert)alert(paymentStatusText(result.status));}catch(e){if(showAlert)alert(e.message||'Não foi possível verificar.')}};
-    $('#checkPixStatus').onclick=()=>check(true);
-    pixStatusTimer=setInterval(()=>check(false),5000);
-    setTimeout(()=>check(false),1200);
-  }
-  setTimeout(()=>{$('#retryPix')?.addEventListener('click',async()=>{showPixModal(order);try{const p=await createPixForOrder(order);showPixModal(order,p);}catch(e){showPixModal(order,null,e.message)}})},0);
+}
+function showPixError(message, order, email){
+  $('#pixLoading')?.classList.add('hidden');
+  $('#pixResult')?.classList.add('hidden');
+  const box=$('#pixError'); if(!box)return;
+  box.classList.remove('hidden');
+  box.innerHTML=`<b>O pedido foi salvo, mas o Pix não foi gerado.</b><br>${escapeHtml(message)}<button id="retryPix" class="secondary full" type="button">Tentar gerar novamente</button>`;
+  $('#retryPix').onclick=()=>generatePix(order,email);
+}
+async function requestJson(url, options={}){
+  const response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.ok===false)throw new Error(data.error||`Erro HTTP ${response.status}`);
+  return data;
+}
+async function generatePix(order,email){
+  showPixModal(order);
+  try{
+    const data=await requestJson('/api/create-pix',{method:'POST',body:JSON.stringify({orderId:order.id,email})});
+    $('#pixLoading')?.classList.add('hidden'); $('#pixError')?.classList.add('hidden'); $('#pixResult')?.classList.remove('hidden');
+    $('#pixDynamicQr').src=`data:image/png;base64,${data.qrCodeBase64}`;
+    $('#pixDynamicCode').value=data.qrCode||'';
+    $('#pixPaymentStatus').textContent='Aguardando pagamento...';
+    $('#copyDynamicPix').onclick=async()=>{try{await navigator.clipboard.writeText(data.qrCode||'');alert('Pix copia e cola copiado!');}catch{ $('#pixDynamicCode').select();document.execCommand('copy');alert('Pix copia e cola copiado!');}};
+    $('#checkPixStatus').onclick=()=>checkPixPayment(order.id,true);
+    if(pixStatusTimer)clearInterval(pixStatusTimer);
+    pixStatusTimer=setInterval(()=>checkPixPayment(order.id,false),5000);
+  }catch(e){console.error(e);showPixError(e.message||'Não foi possível gerar o Pix.',order,email);}
+}
+async function checkPixPayment(orderId,notify){
+  try{
+    const data=await requestJson(`/api/payment-status?orderId=${encodeURIComponent(orderId)}`);
+    const el=$('#pixPaymentStatus');
+    if(data.paid){
+      if(el){el.textContent='✅ Pagamento aprovado!';el.classList.add('paid');}
+      if(pixStatusTimer){clearInterval(pixStatusTimer);pixStatusTimer=null;}
+      confetti();jump('Pix aprovado! Seu pedido já está confirmado. 💖');
+      if(notify)alert('Pagamento aprovado!');
+    }else if(el){el.textContent=data.status==='pending'?'Aguardando pagamento...':`Status: ${data.status||'aguardando'}`;}
+  }catch(e){if(notify)alert(e.message||'Não foi possível consultar o pagamento.');}
 }
 async function finish(){
   if(!supabaseReady)return alert('O banco online ainda não está configurado.');
@@ -433,18 +441,17 @@ async function finish(){
   const customerName=($('#customerName')?.value||'').trim(),customerPhone=($('#customerPhone')?.value||'').trim(),customerEmail=($('#customerEmail')?.value||'').trim().toLowerCase();
   if(!customerName){$('#customerName')?.focus();return alert('Informe o nome do cliente.');}
   if(!customerPhone){$('#customerPhone')?.focus();return alert('Informe o telefone/WhatsApp do cliente.');}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)){ $('#customerEmail')?.focus(); return alert('Informe um e-mail válido para gerar o Pix.'); }
   const fulfillment=$('[name=fulfillment]:checked')?.value||'retirada';let payment=$('#payment')?.value||'pix';let address=null;
-  if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
+  if(payment==='pix'&&!validEmail(customerEmail)){ $('#customerEmail')?.focus();return alert('Informe um e-mail válido para gerar o Pix.'); }
+  if(fulfillment==='entrega'){payment='pix';$('#payment').value='pix';if(!validEmail(customerEmail)){ $('#customerEmail')?.focus();return alert('Informe um e-mail válido para gerar o Pix.'); }const cep=($('#cep')?.value||'').trim(),rua=($('#rua')?.value||'').trim(),numero=($('#numero')?.value||'').trim(),bairro=($('#bairro')?.value||'').trim(),cidade=($('#cidade')?.value||'').trim(),estado=($('#estado')?.value||'').trim();if(!cep||!rua||!numero||!bairro||!cidade||!estado)return alert('Preencha CEP, rua, número, bairro, cidade e UF para entrega.');address={cep,rua,numero,complemento:($('#complemento')?.value||'').trim(),bairro,cidade,estado};}
   const btn=$('#finishOrder');btn.disabled=true;btn.textContent='Finalizando...';
   try{
-    const payload={customerName,customerPhone,customerEmail,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};
+    const payload={customerName,customerPhone,items:JSON.parse(JSON.stringify(cart)),fulfillment,address,payment,paymentLabel:normalizePaymentLabel(payment)};
     const {data,error}=await supabaseClient.rpc('create_order',{p_payload:payload});if(error)throw error;
     const order=orderFromSupabase(data);orders.unshift(order);cart=[];save();await loadPublicInventory();renderCart();renderProducts();renderPromo();confetti();
     if(payment==='pix'){
-      showPixModal(order);
-      try{const pix=await createPixForOrder(order);showPixModal(order,pix);jump('Pedido salvo e Pix gerado com segurança. 💖');}
-      catch(pixError){console.error(pixError);showPixModal(order,null,pixError.message);jump('Pedido salvo. Use o botão para tentar gerar o Pix novamente.');}
+      jump('Pedido salvo! Agora gere e pague o Pix para confirmar. 💖');
+      await generatePix(order,customerEmail);
     }else{
       jump('Pedido salvo online! Teteu e Ingrid verão em tempo real. 💖');
       window.open(`https://wa.me/553192180872?text=${encodeURIComponent(buildWhatsappMessage(order))}`,'_blank');
@@ -482,8 +489,8 @@ function orderNotifyMessage(o, type) { const loja = STORE_ADDRESS; if (type === 
 function openClientWhatsApp(o, msg = '') { const phone = cleanPhoneBR(o.customerPhone); if (!phone) return alert('Este pedido não possui telefone válido do cliente.'); window.open(`https://wa.me/${phone}${msg ? '?text=' + encodeURIComponent(msg) : ''}`, '_blank'); }
 async function setOrderStatusAndNotify(id,status,type){if(!supabaseReady||!currentAdmin)return alert('Entre na central online.');try{const {data,error}=await supabaseClient.rpc('admin_update_order_status',{p_order_id:id,p_status:status});if(error)throw error;const updated=orderFromSupabase(data);const idx=orders.findIndex(x=>x.id===id);if(idx>=0)orders[idx]=updated;await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();const msg=type?orderNotifyMessage(updated,type):'';if(msg||type==='chat')openClientWhatsApp(updated,msg);}catch(e){console.error(e);alert(e.message||'Não foi possível atualizar o pedido.');}}
 
-function renderPendingOrders(pending) { if (!pending.length) return '<p class="emptyState">Nenhum pedido pendente no momento.</p>'; return pending.map(o => `<article class="orderCard status-${statusBadgeClass(o.status)}"><div class="orderTop"><div><b>#${o.id}</b><small>${o.created}</small></div><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span>${o.payment==='pix'?`<span class="paymentBadge ${o.paymentStatus==='approved'?'approved':(o.paymentStatus==='pending'?'pending':'failed')}">${o.paymentStatus==='approved'?'PIX pago':'PIX '+o.paymentStatus}</span>`:''}</div><div class="orderClient"><b>${o.customerName}</b><small>${o.customerPhone}</small></div><div class="orderItemsMini">${orderShortItems(o)}</div><div class="orderMeta"><span>${o.fulfillment === 'entrega' ? '🛵 Entrega' : '🏪 Retirada'}</span><b>${BRL(o.total)}</b></div><div class="orderActions smartActions"><select data-status="${o.id}"><option ${o.status === 'Recebido' ? 'selected' : ''}>Recebido</option><option ${o.status === 'Produção' ? 'selected' : ''}>Produção</option><option ${o.status === 'Pronto' ? 'selected' : ''}>Pronto</option><option ${o.status === 'Saiu para entrega' ? 'selected' : ''}>Saiu para entrega</option><option ${o.status === 'Aguardando retirada' ? 'selected' : ''}>Aguardando retirada</option><option ${o.status === 'Entregue' ? 'selected' : ''}>Entregue</option></select><button class="secondary" data-next="${o.id}">Avançar</button><button class="primary" data-ready="${o.id}">🟢 Pedido pronto</button>${o.fulfillment === 'entrega' ? `<button class="secondary" data-delivery="${o.id}">🛵 Saiu para entrega</button>` : ''}<button class="secondary" data-delivered="${o.id}">✅ Entregue</button><button class="ghost" data-chat="${o.id}">💬 Conversar</button><button class="dangerBtn" data-cancel="${o.id}">Cancelar</button></div></article>`).join(''); }
-function renderProductionQueue(queue) { if (!queue.length) return '<p class="emptyState">Nenhum pedido aguardando produção.</p>'; return queue.map(o => `<article class="productionTicket"><div class="ticketHead"><b>#${o.id}</b><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span>${o.payment==='pix'?`<span class="paymentBadge ${o.paymentStatus==='approved'?'approved':(o.paymentStatus==='pending'?'pending':'failed')}">${o.paymentStatus==='approved'?'PIX pago':'PIX '+o.paymentStatus}</span>`:''}</div><h4>${o.customerName}</h4><p>${orderShortItems(o)}</p><div class="ticketFoot"><small>${o.fulfillment === 'entrega' ? '🛵 Entrega Uber Moto' : '🏪 Retirada na loja'}</small><button class="primary" data-next="${o.id}">${nextProductionStatus(o.status, o.fulfillment) === 'Entregue' ? 'Marcar entregue' : 'Avançar etapa'}</button></div></article>`).join(''); }
+function renderPendingOrders(pending) { if (!pending.length) return '<p class="emptyState">Nenhum pedido pendente no momento.</p>'; return pending.map(o => `<article class="orderCard status-${statusBadgeClass(o.status)}"><div class="orderTop"><div><b>#${o.id}</b><small>${o.created}</small></div><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><div class="orderClient"><b>${o.customerName}</b><small>${o.customerPhone}</small></div><div class="orderItemsMini">${orderShortItems(o)}</div><div class="orderMeta"><span>${o.fulfillment === 'entrega' ? '🛵 Entrega' : '🏪 Retirada'}</span><b>${BRL(o.total)}</b></div><div class="orderActions smartActions"><select data-status="${o.id}"><option ${o.status === 'Recebido' ? 'selected' : ''}>Recebido</option><option ${o.status === 'Produção' ? 'selected' : ''}>Produção</option><option ${o.status === 'Pronto' ? 'selected' : ''}>Pronto</option><option ${o.status === 'Saiu para entrega' ? 'selected' : ''}>Saiu para entrega</option><option ${o.status === 'Aguardando retirada' ? 'selected' : ''}>Aguardando retirada</option><option ${o.status === 'Entregue' ? 'selected' : ''}>Entregue</option></select><button class="secondary" data-next="${o.id}">Avançar</button><button class="primary" data-ready="${o.id}">🟢 Pedido pronto</button>${o.fulfillment === 'entrega' ? `<button class="secondary" data-delivery="${o.id}">🛵 Saiu para entrega</button>` : ''}<button class="secondary" data-delivered="${o.id}">✅ Entregue</button><button class="ghost" data-chat="${o.id}">💬 Conversar</button><button class="dangerBtn" data-cancel="${o.id}">Cancelar</button></div></article>`).join(''); }
+function renderProductionQueue(queue) { if (!queue.length) return '<p class="emptyState">Nenhum pedido aguardando produção.</p>'; return queue.map(o => `<article class="productionTicket"><div class="ticketHead"><b>#${o.id}</b><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><h4>${o.customerName}</h4><p>${orderShortItems(o)}</p><div class="ticketFoot"><small>${o.fulfillment === 'entrega' ? '🛵 Entrega Uber Moto' : '🏪 Retirada na loja'}</small><button class="primary" data-next="${o.id}">${nextProductionStatus(o.status, o.fulfillment) === 'Entregue' ? 'Marcar entregue' : 'Avançar etapa'}</button></div></article>`).join(''); }
 function renderHistory(history) { if (!history.length) return '<p class="emptyState">Nenhum pedido entregue ou cancelado ainda.</p>'; return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Finalizado</b></div>${history.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.status}</small></span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span>${o.deliveredAt || o.canceledAt || o.created}</span></div>`).join('')}</div>`; }
 function renderStockMoves() { if (!stockMoves.length) return '<p class="emptyState">Nenhuma movimentação de estoque ainda.</p>'; return `<div class="historyTable stockMoves"><div class="historyHead"><b>Data</b><b>Produto</b><b>Qtd</b><b>Motivo</b></div>${stockMoves.map(m => `<div class="historyRow"><span>${m.date}</span><span>${m.emoji} ${m.productName}<br><small>${m.type}${m.orderId ? ' • ' + m.orderId : ''}</small></span><b>${m.qty > 0 ? '+' : ''}${m.qty}</b><span>${m.reason}</span></div>`).join('')}</div>`; }
 function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o)).reduce((a, o) => a + o.total, 0), deliveredRevenue = orders.filter(orderIsDelivered).reduce((a, o) => a + o.total, 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico</h3>${renderHistory(history)}</section></div><div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><p class="helper">Cadastre quantas trufas existem por sabor. Se zerar, o sabor fica indisponível no site.</p><div class="stockTable">${products.map(p => { const [label, cls, act] = stockStatus(p); return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`; }).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div><div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Histórico de movimentação do estoque</h3>${renderStockMoves()}</section></div><div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total sem cancelados</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length ? revenue / Math.max(1, orders.filter(o => !orderIsCanceled(o)).length) : 0)}</b></div></section></div>`;
@@ -545,7 +552,7 @@ async function registerFaceId() {
     alert('Não foi possível cadastrar a biometria. Verifique se o site está em HTTPS e se a biometria está configurada no aparelho.');
   }
 }
-async function loginAdmin(){const userEl=$('#user'),passEl=$('#pass'),btn=$('#loginBtn');if(!userEl||!passEl||!btn){console.error('Tela de login incompleta.');return alert('A tela de acesso não carregou corretamente. Atualize a página com Ctrl + F5.');}const u=userEl.value.trim(),p=passEl.value,email=ADMIN_EMAILS[u];if(!email)return alert('Usuário não autorizado.');if(!supabaseReady)return alert('Não foi possível conectar ao Supabase. Atualize a página e tente novamente.');btn.disabled=true;btn.textContent='Entrando...';let authenticated=false;try{const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)throw error;authenticated=true;const ok=await requireFaceId(u);if(!ok)return;currentAdmin=u;await loadAdminSupabaseState();subscribeAdminRealtime();$('#adminPanel')?.classList.remove('hidden');$('.login')?.classList.add('hidden');renderAdmin();}catch(e){console.error('Falha no acesso à central:',e);if(authenticated){alert('A senha foi aceita, mas ocorreu um erro ao carregar a Central. Abra o Console e envie a mensagem vermelha.');}else{alert('Usuário ou senha incorretos.');}}finally{btn.disabled=false;btn.textContent='Entrar';}}
+async function loginAdmin(){const u=$('#user').value.trim(),p=$('#pass').value,email=ADMIN_EMAILS[u];if(!email)return alert('Usuário ou senha incorretos.');if(!supabaseReady)return alert('Configure o Supabase antes de acessar a central online.');const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';try{const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)throw error;const ok=await requireFaceId(u);if(!ok)return;currentAdmin=u;await loadAdminSupabaseState();subscribeAdminRealtime();$('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}catch(e){console.error(e);alert('Usuário ou senha incorretos, ou o usuário ainda não foi criado no Supabase.');}finally{btn.disabled=false;btn.textContent='Entrar';}}
 
 async function init() {
   await initSupabase();
@@ -556,13 +563,9 @@ async function init() {
   $('#goCheckout').onclick = () => { $('#cartDrawer').classList.remove('open'); $('#overlay').classList.remove('show'); };
   $$('[name=fulfillment]').forEach(r => r.onchange = () => { const entrega = $('[name=fulfillment]:checked').value === 'entrega'; $('#addressBox').classList.toggle('hidden', !entrega); $('#storeAddress').classList.toggle('hidden', entrega); resetDeliveryQuote(); if (entrega) { $('#payment').value = 'pix'; pointPix('Para entrega, usamos Pix e envio por Uber Moto. Informe o endereço para aplicar o frete por bairro. Frete grátis acima de R$30 💖'); } renderCart(); });
   $('#payment').onchange = () => { if ($('[name=fulfillment]:checked').value === 'entrega' && $('#payment').value !== 'pix') { $('#payment').value = 'pix'; alert('Para entrega, somente Pix.'); } if ($('#payment').value === 'pix') pointPix('Aqui está o QR Code Pix. Depois é só finalizar o pedido. 📱'); };
-  // O Pix da V56 usa o botão dinâmico dentro do modal. Mantém compatibilidade apenas se o botão antigo existir.
-  $('#copyPix')?.addEventListener('click', () => {
-    const pixCode = $('#pixCode')?.value || '';
-    if (!pixCode) return;
-    navigator.clipboard?.writeText(pixCode).then(() => alert('Pix copia e cola copiado!'));
-  });
-  $('#finishOrder').onclick = finish; $('#pixModalClose')?.addEventListener('click',closePixModal); $('#pixModal')?.addEventListener('click',e=>{if(e.target.id==='pixModal')closePixModal()}); $('#addPromo').onclick = addPromo; $('#resetPromo').onclick = () => { promo = []; renderPromo(); }; $('#suggestPromo').onclick = suggestPromo;
+  $('#pixModalClose')?.addEventListener('click',hidePixModal);
+  $('#pixModal')?.addEventListener('click',e=>{if(e.target===$('#pixModal'))hidePixModal();});
+  $('#finishOrder').onclick = finish; $('#addPromo').onclick = addPromo; $('#resetPromo').onclick = () => { promo = []; renderPromo(); }; $('#suggestPromo').onclick = suggestPromo;
   $('#aiForm').onsubmit = e => { e.preventDefault(); const q = $('#aiInput').value.trim(); if (!q) return; addChat(q, 'user'); const a = aiAnswer(q); setTimeout(() => { addChat(a); say(a.split('.')[0] + '.'); }, 160); $('#aiInput').value = ''; };
   $$('.chips button').forEach(b => b.onclick = () => { $('#aiInput').value = b.dataset.q; $('#aiForm').dispatchEvent(new Event('submit')); });
   $('#loginBtn').onclick = loginAdmin; $('#faceRegister') && ($('#faceRegister').onclick = registerFaceId);
@@ -624,7 +627,7 @@ function zoneMapHtml(){return `<div class="mapBox"><iframe title="Mapa de bairro
 
 function renderAdmin(){
  const pending=orders.filter(o=>!orderIsDelivered(o)&&!orderIsCanceled(o)),history=orders.filter(o=>orderIsDelivered(o)||orderIsCanceled(o)),production=pending.filter(orderIsProduction),deliveredRevenue=orders.filter(orderIsDelivered).reduce((a,o)=>a+o.total,0),low=products.filter(p=>!p.unavailable&&p.stock<=p.min).length;
- $('#adminPanel').innerHTML=`<div class="adminHero"><div><p class="tag">Centro de Controle V56</p><h2>Área da Empresa</h2><p>Pedidos, estoque, financeiro mensal, impressão térmica e taxas de entrega online.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro mensal</button><button data-tabbtn="zones">🛵 Taxas</button><button data-tabbtn="settings">⚙️ Configurações</button></div>
+ $('#adminPanel').innerHTML=`<div class="adminHero"><div><p class="tag">Centro de Controle V54</p><h2>Área da Empresa</h2><p>Pedidos, estoque, financeiro mensal, impressão térmica e taxas de entrega online.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Histórico</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro mensal</button><button data-tabbtn="zones">🛵 Taxas</button><button data-tabbtn="settings">⚙️ Configurações</button></div>
  <div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div>
  <div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Produção</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o=>normalizeText(o.status)==='recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o=>['producao','produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o=>['pronto','saiu para entrega','aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div>
  <div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Histórico</h3>${renderHistory(history)}</section></div>
@@ -649,4 +652,4 @@ async function registerFaceId(){const u=($('#user')?.value||currentAdmin||'').tr
  const challenge=crypto.getRandomValues(new Uint8Array(32)),userId=new TextEncoder().encode(u.padEnd(16,'0').slice(0,32));try{const cred=await navigator.credentials.create({publicKey:{challenge,rp:{name:'Doce Encanto'},user:{id:userId,name:u,displayName:ADMIN_USERS[u].name},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},timeout:60000,attestation:'none'}});localStorage.setItem(faceKey(u),JSON.stringify({id:Array.from(new Uint8Array(cred.rawId))}));alert('Face ID/Windows Hello cadastrado neste aparelho.')}catch(e){alert('Não foi possível cadastrar: '+(e.message||e.name))}}
 async function requireFaceId(u){const raw=localStorage.getItem(faceKey(u));if(!raw)return true;if(!window.isSecureContext||!navigator.credentials)return confirm('Biometria indisponível. Continuar somente com a senha?');try{const saved=JSON.parse(raw),challenge=crypto.getRandomValues(new Uint8Array(32));await navigator.credentials.get({publicKey:{challenge,allowCredentials:[{type:'public-key',id:new Uint8Array(saved.id)}],userVerification:'required',timeout:60000}});return true}catch(e){alert('Biometria não confirmada.');return false}}
 
-init().catch(error=>{console.error('Falha ao iniciar o sistema:',error);alert('O sistema não carregou completamente. Atualize com Ctrl + F5. Se persistir, abra o Console.');});
+init();
