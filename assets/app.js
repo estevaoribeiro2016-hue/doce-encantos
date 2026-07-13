@@ -11,7 +11,7 @@ const BASE_PRODUCTS = [
   { id: 'uva-verde', name: 'Uva Verde', emoji: '🍇', price: 5, stock: 0, min: 1, comingSoon: true, desc: 'Sabor de uva verde. Em breve no cardápio da Doce Encanto.' }
 ];
 
-const STORE = 'de_v56_';
+const STORE = 'de_v57_';
 const LEGACY_STORES = ['de_v54_clean_', 'de_v40_', 'de_v41_', 'de_v42_'];
 const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 const STORE_LAT = -19.9161711;
@@ -643,7 +643,33 @@ async function registerFaceId() {
     alert('Não foi possível cadastrar a biometria. Verifique se o site está em HTTPS e se a biometria está configurada no aparelho.');
   }
 }
-async function loginAdmin(){const u=$('#user').value.trim(),p=$('#pass').value,email=ADMIN_EMAILS[u];if(!email)return alert('Usuário ou senha incorretos.');if(!supabaseReady)return alert('Configure o Supabase antes de acessar a central online.');const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';try{const {error}=await supabaseClient.auth.signInWithPassword({email,password:p});if(error)throw error;const ok=await requireFaceId(u);if(!ok)return;currentAdmin=u;await loadAdminSupabaseState();subscribeAdminRealtime();$('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();}catch(e){console.error(e);alert('Usuário ou senha incorretos, ou o usuário ainda não foi criado no Supabase.');}finally{btn.disabled=false;btn.textContent='Entrar';}}
+async function loginAdmin(){
+  const rawUser=$('#user').value.trim().toLowerCase();
+  const p=$('#pass').value;
+  const u=rawUser.endsWith('@doceencanto.local')?rawUser.split('@')[0]:rawUser;
+  const email=ADMIN_EMAILS[u];
+  if(!email)return alert('Use teteu.trufa ou ingrid.trufa.');
+  if(!p)return alert('Digite a senha.');
+  if(!supabaseReady)return alert('O Supabase não está conectado. Atualize a página e tente novamente.');
+  const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
+    if(error)throw error;
+    if(!data?.user)throw new Error('Sessão não criada.');
+    const ok=await requireFaceId(u);if(!ok){await supabaseClient.auth.signOut();return;}
+    currentAdmin=u;
+    await loadAdminSupabaseState();
+    subscribeAdminRealtime();
+    $('#adminPanel').classList.remove('hidden');$('.login').classList.add('hidden');renderAdmin();
+  }catch(e){
+    console.error('Falha no login:',e);
+    const msg=String(e?.message||'').toLowerCase();
+    if(msg.includes('invalid login credentials')) alert('Senha incorreta para este usuário. Os usuários existem no Supabase; redefina apenas a senha se não lembrar.');
+    else if(msg.includes('email not confirmed')) alert('O usuário existe, mas o e-mail ainda não foi confirmado no Supabase.');
+    else if(msg.includes('rate limit')) alert('Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.');
+    else alert('Não foi possível entrar: '+(e?.message||'erro de autenticação'));
+  }finally{btn.disabled=false;btn.textContent='Entrar';}
+}
 
 async function init() {
   bindCepLookup();
