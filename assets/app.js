@@ -14,6 +14,8 @@ const BASE_PRODUCTS = [
 const STORE = 'de_v56_';
 const LEGACY_STORES = ['de_v54_clean_', 'de_v40_', 'de_v41_', 'de_v42_'];
 const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
+const STORE_LAT = -19.9161711;
+const STORE_LNG = -44.0194156;
 const DELIVERY_MODE = 'Uber Moto';
 const DELIVERY_FEES = { pindorama: 5, filadelfia: 5, 'jardim filadelfia': 5, 'novo gloria': 6, gloria: 6, coqueiros: 6 };
 const DEFAULT_DELIVERY_FEE = 10;
@@ -285,6 +287,12 @@ function renderCart() { const totalQty = cart.reduce((a, i) => a + (i.qty || 0),
 
 function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
 function maskCep(v) { v = onlyDigits(v).slice(0, 8); return v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v; }
+function inferNeighborhoodByCep(raw) {
+  const n = Number(onlyDigits(raw));
+  if (n >= 30881490 && n <= 30882780) return 'Serrano';
+  if (n >= 30865000 && n <= 30865999) return 'Pindorama';
+  return '';
+}
 
 const LOCAL_CEP_FALLBACK = {
   '30865060': { logradouro: 'Rua Macarena', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
@@ -297,7 +305,7 @@ let lastResolvedCep = '';
 
 function applyCepData(data, source = 'ViaCEP', rawCep = '') {
   const street = data.logradouro || data.street || '';
-  const neighborhood = data.bairro || data.neighborhood || '';
+  const neighborhood = data.bairro || data.neighborhood || inferNeighborhoodByCep(rawCep) || '';
   const city = data.localidade || data.city || '';
   const state = data.uf || data.state || '';
   if ($('#rua')) $('#rua').value = street;
@@ -714,7 +722,7 @@ function zoneMatchStatus(){
 function renderZoneRows(){const q=normalizeText(deliveryZoneSearch);const indexed=deliveryZonesDraft.map((z,i)=>({z,i}));const rows=indexed.filter(({z})=>!q||normalizeText(z.name).includes(q));if(!rows.length)return zoneMatchStatus()+'<p class="emptyState">Nenhum bairro encontrado.</p>';return zoneMatchStatus()+rows.map(({z,i})=>`<div class="zoneRow" data-zone-id="${z.id||''}"><input data-zone-name="${i}" value="${escapeHtml(z.name)}" placeholder="Nome do bairro"><input data-zone-fee="${i}" type="number" min="0" step="0.50" value="${Number(z.fee).toFixed(2)}"><label><input data-zone-active="${i}" type="checkbox" ${z.active?'checked':''}> Ativo</label><button class="dangerBtn" data-zone-remove="${i}">Excluir</button></div>`).join('');}
 function syncZoneDraftFromInputs(){$$('[data-zone-name]').forEach(input=>{const i=+input.dataset.zoneName;if(deliveryZonesDraft[i])deliveryZonesDraft[i].name=input.value});$$('[data-zone-fee]').forEach(input=>{const i=+input.dataset.zoneFee;if(deliveryZonesDraft[i])deliveryZonesDraft[i].fee=Number(input.value||0)});$$('[data-zone-active]').forEach(input=>{const i=+input.dataset.zoneActive;if(deliveryZonesDraft[i])deliveryZonesDraft[i].active=input.checked})}
 async function saveDeliveryZones(){syncZoneDraftFromInputs();const valid=deliveryZonesDraft.filter(z=>z.name.trim());const seen=new Set();for(const z of valid){const key=normalizeText(z.name);if(seen.has(key))throw new Error(`O bairro “${z.name}” já existe. Edite o cadastro existente em vez de criar outro.`);seen.add(key)}const {error}=await supabaseClient.rpc('admin_save_delivery_zones',{p_zones:valid});if(error)throw error;await loadAdminSupabaseState();renderAdmin();alert('Taxas salvas e atualizadas para os clientes.');}
-function zoneMapHtml(){const address=encodeURIComponent(STORE_ADDRESS);return `<div class="mapBox"><h4>📍 Localização da loja</h4><iframe title="Mapa da Doce Encanto" src="https://www.google.com/maps?q=${address}&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><p><b>Doce Encanto — Rua Aletes, 78, Pindorama, Belo Horizonte/MG</b></p><p class="helper">Ponto de referência: loja localizada no bairro Pindorama. Confirme o portão marrom ao chegar.</p><p><a href="https://www.google.com/maps/search/?api=1&query=${address}" target="_blank" rel="noopener">Abrir rota no Google Maps</a></p></div>`;}
+function zoneMapHtml(){const coords=`${STORE_LAT},${STORE_LNG}`;const address=encodeURIComponent(STORE_ADDRESS);return `<div class="mapBox storeMapMarked"><h4>📍 Localização da loja</h4><div class="mapPinLabel">📍 Doce Encanto</div><iframe title="Mapa da Doce Encanto" src="https://www.google.com/maps?q=${coords}&z=18&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><p><b>Doce Encanto — Rua Aletes, 78, Pindorama, Belo Horizonte/MG</b></p><p class="helper">Ponto de referência: portão marrom. O marcador indica a região da Rua Aletes, CEP 30865-180.</p><p><a href="https://www.google.com/maps/dir/?api=1&destination=${coords}&destination_place_id=&travelmode=driving" target="_blank" rel="noopener">Abrir rota até a loja</a></p></div>`;}
 function bindZoneButtons(){$$('[data-zone-remove]').forEach(b=>b.onclick=()=>{syncZoneDraftFromInputs();deliveryZonesDraft.splice(+b.dataset.zoneRemove,1);$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons()})}
 
 // WebAuthn local: usa biometria do dispositivo; a senha do Supabase continua sendo a autenticação principal.
