@@ -7,12 +7,6 @@
     return raw.length > 5 ? raw.slice(0, 5) + '-' + raw.slice(5) : raw;
   };
   const byId = id => document.getElementById(id);
-  const inferDistrict = cep => {
-    const n = Number(digits(cep));
-    if (n >= 30881490 && n <= 30882780) return 'Serrano';
-    if (n >= 30865000 && n <= 30865999) return 'Pindorama';
-    return '';
-  };
 
   function setStatus(message, type) {
     const el = byId('cepStatus');
@@ -63,7 +57,7 @@
     const normalized = {
       cep: data.cep || data.code || '',
       logradouro: data.logradouro || data.street || data.address || '',
-      bairro: data.bairro || data.neighborhood || data.district || inferDistrict(data.cep || data.code || ''),
+      bairro: data.bairro || data.neighborhood || data.district || '',
       localidade: data.localidade || data.city || data.cidade || '',
       uf: data.uf || data.state || data.estado || ''
     };

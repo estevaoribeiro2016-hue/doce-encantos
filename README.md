@@ -1,23 +1,21 @@
-# Doce Encanto V57 — Base organizada
+# Doce Encanto V51 Estável
+
+Versão baseada na V50 conectada ao Supabase, com correções de estabilidade no checkout.
 
 ## Correções principais
-- Login usa diretamente o Supabase Auth existente.
-- Aceita `teteu.trufa`, `ingrid.trufa` ou o e-mail completo.
-- Mostra o motivo real da falha de autenticação.
-- Não recria nem apaga usuários do Supabase.
-- Banco consolidado em um único arquivo SQL.
-- Função de salvar bairros compatível com a tabela antiga (`neighborhood`) e nova (`name`).
-- Cache do aplicativo atualizado para impedir carregamento de versões antigas.
+- Eliminado o erro `Maximum call stack size exceeded` causado por atualização recursiva do frete/total.
+- CEP com consulta em duas fontes: ViaCEP e BrasilAPI.
+- Debounce no campo de CEP para evitar travamentos e requisições repetidas.
+- Base local de emergência para CEPs conhecidos da região.
+- Finalização do pedido mantém Supabase, desconto de estoque, pedidos pendentes e WhatsApp.
+- Cache atualizado para evitar que a Vercel/navegador carregue JavaScript antigo.
 
-## Instalação
-1. No Supabase, abra SQL Editor > New query.
-2. Execute todo o arquivo `DOCE-ENCANTO-BANCO-ORGANIZADO-V57.sql`.
-3. Envie os arquivos do projeto para o GitHub/Vercel.
-4. Abra o site e pressione Ctrl+F5.
+## Publicação
+Extraia o ZIP e envie todos os arquivos internos para a raiz do repositório no GitHub. Após o deploy, faça uma atualização forçada da página ou limpe os dados do site uma vez.
 
-## Acesso
-Usuários preservados:
-- `teteu.trufa`
-- `ingrid.trufa`
-
-As senhas permanecem as que estão cadastradas no Supabase Auth. Se aparecer “Senha incorreta”, abra Authentication > Users, clique no usuário e use a opção de redefinir senha. Não crie outro usuário duplicado.
+## Teste recomendado
+1. Adicione uma trufa ou promoção.
+2. Vá ao checkout e selecione Entrega.
+3. Digite um CEP válido e aguarde o preenchimento.
+4. Complete o número.
+5. Finalize e confirme que o pedido entra no Supabase e o WhatsApp abre.

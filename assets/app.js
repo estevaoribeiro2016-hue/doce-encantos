@@ -11,7 +11,7 @@ const BASE_PRODUCTS = [
   { id: 'uva-verde', name: 'Uva Verde', emoji: '🍇', price: 5, stock: 0, min: 1, comingSoon: true, desc: 'Sabor de uva verde. Em breve no cardápio da Doce Encanto.' }
 ];
 
-const STORE = 'de_v57_';
+const STORE = 'de_v58_';
 const LEGACY_STORES = ['de_v54_clean_', 'de_v40_', 'de_v41_', 'de_v42_'];
 const STORE_ADDRESS = 'Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180';
 const STORE_LAT = -19.9161711;
@@ -183,10 +183,7 @@ function renderProducts() {
   if (!$('#products')) return;
   $('#products').innerHTML = products.map(p => {
     const out = p.unavailable || p.stock <= 0;
-    const soon = !!p.comingSoon && p.stock <= 0;
-    const status = soon ? 'Em breve' : (out ? 'Indisponível' : 'Estoque: ' + p.stock);
-    const buttonLabel = soon ? 'Em breve' : (out ? 'Indisponível' : 'Adicionar');
-    return `<article class="product ${out ? 'soldout' : ''}"><button class="favoriteBtn ${favorites.includes(p.id)?'active':''}" data-favorite="${p.id}" aria-label="Favoritar ${p.name}">${favorites.includes(p.id)?'❤️':'🤍'}</button><div class="art">${p.emoji}</div><h3>Trufa de ${p.name}</h3><p>${p.desc}</p><small class="stockBadge ${out ? 'danger' : ''}">${status}</small><div class="price">${BRL(p.price)}</div><button class="primary full add" data-id="${p.id}" ${out ? 'disabled' : ''}>${buttonLabel}</button></article>`;
+    return `<article class="product ${out ? 'soldout' : ''}"><button class="favoriteBtn ${favorites.includes(p.id)?'active':''}" data-favorite="${p.id}" aria-label="Favoritar ${p.name}">${favorites.includes(p.id)?'❤️':'🤍'}</button><div class="art">${p.emoji}</div><h3>Trufa de ${p.name}</h3><p>${p.desc}</p><small class="stockBadge ${out ? 'danger' : ''}">${out ? 'Indisponível' : 'Estoque: ' + p.stock}</small><div class="price">${BRL(p.price)}</div><button class="primary full add" data-id="${p.id}" ${out ? 'disabled' : ''}>${out ? 'Indisponível' : 'Adicionar'}</button></article>`;
   }).join('');
   $$('.add').forEach(b => b.onclick = () => addItem(b.dataset.id, b));
   $$('[data-favorite]').forEach(b=>b.onclick=()=>toggleFavorite(b.dataset.favorite));
@@ -198,8 +195,8 @@ function renderPromo() {
   $$('.slots span').forEach((s, i) => { const id = promo[i]; s.textContent = id ? productById(id).emoji : ''; s.classList.toggle('filled', !!id); });
   $('#promoProgress').style.width = percent + '%'; $('#promoCounter').textContent = `${count} de 3 escolhidas`;
   $('#promoChoices').innerHTML = products.map(p => {
-    const selected = promo.filter(x => x === p.id).length, out = p.unavailable || p.stock <= 0, soon = !!p.comingSoon && p.stock <= 0, limit = stockReservedInCart(p.id) + selected >= p.stock;
-    return `<div class="choice ${out ? 'soldout' : ''}"><div class="emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.desc}</p><small>${soon ? 'Em breve' : (out ? 'Indisponível' : `Estoque: ${p.stock} • Selecionadas: ${selected}`)}</small><div class="qty"><button data-minus="${p.id}" ${selected === 0 ? 'disabled' : ''}>-</button><b>${selected}</b><button data-plus="${p.id}" ${(out || promo.length >= 3 || limit) ? 'disabled' : ''}>+</button></div></div>`;
+    const selected = promo.filter(x => x === p.id).length, out = p.unavailable || p.stock <= 0, limit = stockReservedInCart(p.id) + selected >= p.stock;
+    return `<div class="choice ${out ? 'soldout' : ''}"><div class="emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.desc}</p><small>${out ? 'Indisponível' : `Estoque: ${p.stock} • Selecionadas: ${selected}`}</small><div class="qty"><button data-minus="${p.id}" ${selected === 0 ? 'disabled' : ''}>-</button><b>${selected}</b><button data-plus="${p.id}" ${(out || promo.length >= 3 || limit) ? 'disabled' : ''}>+</button></div></div>`;
   }).join('');
   $$('[data-plus]').forEach(b => b.onclick = () => promoPlus(b.dataset.plus, b));
   $$('[data-minus]').forEach(b => b.onclick = () => promoMinus(b.dataset.minus));
@@ -220,7 +217,7 @@ function toggleFavorite(id){
 function renderFavoriteProducts(){
   const box=$('#favoriteProducts');if(!box)return;
   const list=favorites.map(productById).filter(Boolean);
-  box.innerHTML=list.length?list.map(p=>`<article class="favoriteItem"><span>${p.emoji}</span><div><b>${p.name}</b><small>${p.stock>0&&!p.unavailable?'Disponível agora':(p.comingSoon?'Em breve':'Indisponível')}</small></div><button class="secondary" data-fav-add="${p.id}" ${p.stock<=0||p.unavailable?'disabled':''}>Adicionar</button><button class="ghost" data-fav-remove="${p.id}">Remover</button></article>`).join(''):'<p class="emptyState">Você ainda não salvou nenhum sabor favorito.</p>';
+  box.innerHTML=list.length?list.map(p=>`<article class="favoriteItem"><span>${p.emoji}</span><div><b>${p.name}</b><small>${p.stock>0&&!p.unavailable?'Disponível agora':'Indisponível'}</small></div><button class="secondary" data-fav-add="${p.id}" ${p.stock<=0||p.unavailable?'disabled':''}>Adicionar</button><button class="ghost" data-fav-remove="${p.id}">Remover</button></article>`).join(''):'<p class="emptyState">Você ainda não salvou nenhum sabor favorito.</p>';
   $$('[data-fav-add]').forEach(b=>b.onclick=()=>addItem(b.dataset.favAdd,b));
   $$('[data-fav-remove]').forEach(b=>b.onclick=()=>toggleFavorite(b.dataset.favRemove));
 }
@@ -287,12 +284,6 @@ function renderCart() { const totalQty = cart.reduce((a, i) => a + (i.qty || 0),
 
 function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
 function maskCep(v) { v = onlyDigits(v).slice(0, 8); return v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v; }
-function inferNeighborhoodByCep(raw) {
-  const n = Number(onlyDigits(raw));
-  if (n >= 30881490 && n <= 30882780) return 'Serrano';
-  if (n >= 30865000 && n <= 30865999) return 'Pindorama';
-  return '';
-}
 
 const LOCAL_CEP_FALLBACK = {
   '30865060': { logradouro: 'Rua Macarena', bairro: 'Pindorama', localidade: 'Belo Horizonte', uf: 'MG' },
@@ -305,7 +296,7 @@ let lastResolvedCep = '';
 
 function applyCepData(data, source = 'ViaCEP', rawCep = '') {
   const street = data.logradouro || data.street || '';
-  const neighborhood = data.bairro || data.neighborhood || inferNeighborhoodByCep(rawCep) || '';
+  const neighborhood = data.bairro || data.neighborhood || '';
   const city = data.localidade || data.city || '';
   const state = data.uf || data.state || '';
   if ($('#rua')) $('#rua').value = street;
@@ -583,82 +574,35 @@ function renderPendingOrders(pending) {
 function renderProductionQueue(queue) { if (!queue.length) return '<p class="emptyState">Nenhum pedido aguardando produção.</p>'; return queue.map(o => `<article class="productionTicket"><div class="ticketHead"><b>#${o.id}</b><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><h4>${o.customerName}</h4><p>${orderShortItems(o)}</p><div class="ticketFoot"><small>${o.fulfillment === 'entrega' ? '🛵 Entrega Uber Moto' : '🏪 Retirada na loja'}</small><button class="primary" data-next="${o.id}">${nextProductionStatus(o.status, o.fulfillment) === 'Entregue' ? 'Marcar entregue' : 'Avançar etapa'}</button></div></article>`).join(''); }
 function renderHistory(history) { if (!history.length) return '<p class="emptyState">Nenhum pedido entregue ou cancelado ainda.</p>'; return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Finalizado</b></div>${history.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.status}</small></span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span>${o.deliveredAt || o.canceledAt || o.created}</span></div>`).join('')}</div>`; }
 function renderStockMoves() { if (!stockMoves.length) return '<p class="emptyState">Nenhuma movimentação de estoque ainda.</p>'; return `<div class="historyTable stockMoves"><div class="historyHead"><b>Data</b><b>Produto</b><b>Qtd</b><b>Motivo</b></div>${stockMoves.map(m => `<div class="historyRow"><span>${m.date}</span><span>${m.emoji} ${m.productName}<br><small>${m.type}${m.orderId ? ' • ' + m.orderId : ''}</small></span><b>${m.qty > 0 ? '+' : ''}${m.qty}</b><span>${m.reason}</span></div>`).join('')}</div>`; }
-
-async function toggleTestOrder(id) {
-  const o = orders.find(x => x.id === id);
-  if (!o) return alert('Pedido não encontrado.');
-  const action = o.isTest
-    ? 'transformar este pedido em pedido real'
-    : 'marcar este pedido como teste e retirá-lo do faturamento';
-  if (!confirm(`Deseja ${action}?`)) return;
-  try {
-    const { error } = await supabaseClient.rpc('admin_mark_order_test_v55', {
-      p_order_id: id,
-      p_is_test: !o.isTest
-    });
-    if (error) throw error;
-    await loadAdminSupabaseState();
-    renderAdmin();
-  } catch (e) {
-    console.error(e);
-    alert(e.message || 'Não foi possível alterar o tipo do pedido.');
-  }
+async function toggleTestOrder(id){
+ const o=orders.find(x=>x.id===id);if(!o)return;
+ if(!confirm(o.isTest?'Transformar este pedido em pedido real e incluir no faturamento quando entregue?':'Marcar este pedido como TESTE e retirar do faturamento real?'))return;
+ const {error}=await supabaseClient.rpc('admin_mark_order_test_v55',{p_order_id:id,p_is_test:!o.isTest});if(error)return alert(error.message);await loadAdminSupabaseState();renderAdmin();
+}
+async function restoreCanceledOrder(id){
+ const o=orders.find(x=>x.id===id);if(!o)return;
+ if(!confirm(`Voltar o pedido #${o.id} para os pedidos pendentes?\n\nO estoque será descontado novamente.`))return;
+ const {data,error}=await supabaseClient.rpc('admin_restore_canceled_order_v55',{p_order_id:id});
+ if(error)return alert(error.message||'Não foi possível restaurar o pedido.');
+ await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();
+ alert('Pedido restaurado e devolvido para a área de pendentes.');
+}
+function renderCanceledOrders(list){
+ if(!list.length)return '<p class="emptyState">Nenhum pedido cancelado.</p>';
+ return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Ação</b></div>${list.map(o=>`<div class="historyRow"><span>#${o.id}<br><small>${o.canceledAt||o.created}</small></span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span><button class="primary" data-restore="${o.id}">↩️ Voltar pedido</button></span></div>`).join('')}</div>`;
 }
 
-async function restoreCanceledOrder(id) {
-  const o = orders.find(x => x.id === id);
-  if (!o) return alert('Pedido não encontrado.');
-  if (!confirm(`Voltar o pedido #${o.id} para os pedidos pendentes?\n\nO estoque será descontado novamente.`)) return;
-  try {
-    const { error } = await supabaseClient.rpc('admin_restore_canceled_order_v55', {
-      p_order_id: id
-    });
-    if (error) throw error;
-    await loadPublicInventory();
-    await loadAdminSupabaseState();
-    renderAdmin();
-    renderProducts();
-    renderPromo();
-    alert('Pedido restaurado para a área de pendentes.');
-  } catch (e) {
-    console.error(e);
-    alert(e.message || 'Não foi possível restaurar o pedido.');
-  }
+async function adjustRevenue(id){
+ if(currentAdmin!=='teteu.trufa')return alert('Somente o usuário Teteu pode corrigir o faturamento.');
+ const o=orders.find(x=>x.id===id);if(!o)return;const current=o.total+(o.revenueAdjustment||0);
+ const raw=prompt(`Valor original: ${BRL(o.total)}\nValor considerado atualmente: ${BRL(current)}\n\nDigite o valor correto que deve entrar no faturamento:`,String(current).replace('.',','));if(raw===null)return;
+ const corrected=Number(String(raw).replace(/[^0-9,.-]/g,'').replace(',','.'));if(!Number.isFinite(corrected)||corrected<0)return alert('Digite um valor válido.');
+ const reason=prompt('Informe o motivo da correção:','Correção de pedido de teste ou valor lançado incorretamente');if(!reason)return alert('Informe o motivo da correção.');
+ const {error}=await supabaseClient.rpc('admin_adjust_order_revenue_v55',{p_order_id:id,p_corrected_total:corrected,p_reason:reason});if(error)return alert(error.message);await loadAdminSupabaseState();renderAdmin();alert('Faturamento corrigido e alteração registrada.');
 }
 
-function renderCanceledOrders(list) {
-  if (!list.length) return '<p class="emptyState">Nenhum pedido cancelado.</p>';
-  return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Ação</b></div>${list.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.canceledAt || o.created}</small></span><span>${escapeHtml(o.customerName)}</span><b>${BRL(o.total)}</b><span><button class="primary" data-restore="${o.id}">↩️ Voltar pedido</button></span></div>`).join('')}</div>`;
-}
 
-async function adjustRevenue(id) {
-  if (currentAdmin !== 'teteu.trufa') return alert('Somente o usuário Teteu pode corrigir o faturamento.');
-  const o = orders.find(x => x.id === id);
-  if (!o) return alert('Pedido não encontrado.');
-  const current = o.total + (o.revenueAdjustment || 0);
-  const raw = prompt(`Valor original: ${BRL(o.total)}\nValor considerado atualmente: ${BRL(current)}\n\nDigite o valor correto:`, String(current).replace('.', ','));
-  if (raw === null) return;
-  const corrected = Number(String(raw).replace(/[^0-9,.-]/g, '').replace(',', '.'));
-  if (!Number.isFinite(corrected) || corrected < 0) return alert('Digite um valor válido.');
-  const reason = prompt('Informe o motivo da correção:', 'Correção de valor lançado incorretamente');
-  if (!reason) return alert('Informe o motivo da correção.');
-  try {
-    const { error } = await supabaseClient.rpc('admin_adjust_order_revenue_v55', {
-      p_order_id: id,
-      p_corrected_total: corrected,
-      p_reason: reason
-    });
-    if (error) throw error;
-    await loadAdminSupabaseState();
-    renderAdmin();
-    alert('Faturamento corrigido e alteração registrada.');
-  } catch (e) {
-    console.error(e);
-    alert(e.message || 'Não foi possível corrigir o faturamento.');
-  }
-}
-
-function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const delivered = orders.filter(orderIsDelivered); const canceled = orders.filter(orderIsCanceled); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o) && !o.isTest).reduce((a, o) => a + o.total, 0), deliveredRevenue = delivered.filter(o => !o.isTest).reduce((a, o) => a + o.total + (o.revenueAdjustment || 0), 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="toggleOrderAlarm" class="secondary">${newOrderAlarmEnabled?'🔔 Alarme ligado':'🔕 Ativar alarme'}</button><button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Entregues</button><button data-tabbtn="canceled">❌ Cancelados</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Pedidos entregues</h3>${renderHistory(delivered)}</section></div>
+function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o)).reduce((a, o) => a + o.total, 0), deliveredRevenue = orders.filter(orderIsDelivered).reduce((a, o) => a + o.total, 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="toggleOrderAlarm" class="secondary">${newOrderAlarmEnabled?'🔔 Alarme ligado':'🔕 Ativar alarme'}</button><button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Entregues</button><button data-tabbtn="canceled">❌ Cancelados</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Pedidos entregues</h3>${renderHistory(delivered)}</section></div>
  <div class="tabPanel" data-tab="canceled"><section class="adminCard wide"><h3>❌ Pedidos cancelados</h3><p class="helper">Use “Voltar pedido” quando um cancelamento tiver sido feito por engano.</p>${renderCanceledOrders(canceled)}</section></div><div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><p class="helper">Cadastre quantas trufas existem por sabor. Se zerar, o sabor fica indisponível no site.</p><div class="stockTable">${products.map(p => { const [label, cls, act] = stockStatus(p); return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`; }).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div><div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Histórico de movimentação do estoque</h3>${renderStockMoves()}</section></div><div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total sem cancelados</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length ? revenue / Math.max(1, orders.filter(o => !orderIsCanceled(o)).length) : 0)}</b></div></section></div>`;
   $('#adminBack').onclick=()=>location.hash='home'; $('#adminLogout').onclick=async()=>{await supabaseClient?.auth.signOut();currentAdmin=null;orders=[];stockMoves=[];$('#adminPanel').classList.add('hidden');$('.login').classList.remove('hidden');};
   $$('[data-tabbtn]').forEach(btn => btn.onclick = () => { $$('[data-tabbtn]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); $$('[data-tab]').forEach(p => p.classList.toggle('active', p.dataset.tab === btn.dataset.tabbtn)); });
@@ -669,9 +613,6 @@ function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o)
   $$('[data-delivery]').forEach(btn => btn.onclick = () => setOrderStatusAndNotify(btn.dataset.delivery, 'Saiu para entrega', 'delivery'));
   $$('[data-delivered]').forEach(btn => btn.onclick = () => setOrderStatusAndNotify(btn.dataset.delivered, 'Entregue', 'delivered'));
   $$('[data-chat]').forEach(btn => btn.onclick = () => { const o = orders.find(x => x.id === btn.dataset.chat); if (o) openClientWhatsApp(o, ''); });
-  $$('[data-test]').forEach(btn => btn.onclick = () => toggleTestOrder(btn.dataset.test));
-  $$('[data-revenue]').forEach(btn => btn.onclick = () => adjustRevenue(btn.dataset.revenue));
-  $$('[data-restore]').forEach(btn => btn.onclick = () => restoreCanceledOrder(btn.dataset.restore));
   $$('[data-cancel]').forEach(btn => btn.onclick = () => { if (confirm('Cancelar este pedido e devolver o estoque?')) setOrderStatusAndNotify(btn.dataset.cancel, 'Cancelado', 'canceled'); });
 }
 
@@ -722,39 +663,33 @@ async function registerFaceId() {
   }
 }
 async function loginAdmin(){
-  const rawUser=$('#user').value.trim().toLowerCase();
-  const p=$('#pass').value;
-  const u=rawUser.endsWith('@doceencanto.local')?rawUser.split('@')[0]:rawUser;
-  const email=ADMIN_EMAILS[u];
+  const rawUser=($('#user')?.value||'').trim().toLowerCase();
+  const password=$('#pass')?.value||'';
+  const username=rawUser.endsWith('@doceencanto.local')?rawUser.split('@')[0]:rawUser;
+  const email=ADMIN_EMAILS[username];
   if(!email)return alert('Use teteu.trufa ou ingrid.trufa.');
-  if(!p)return alert('Digite a senha.');
+  if(!password)return alert('Digite a senha.');
   if(!supabaseReady)return alert('O Supabase não está conectado. Atualize a página e tente novamente.');
   const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Entrando...';
   try{
-    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
     if(error)throw error;
     if(!data?.user)throw new Error('Sessão não criada.');
-    const ok=await requireFaceId(u);if(!ok){await supabaseClient.auth.signOut();return;}
-    currentAdmin=u;
+    const ok=await requireFaceId(username);if(!ok){await supabaseClient.auth.signOut();return;}
+    currentAdmin=username;
     await loadAdminSupabaseState();
     subscribeAdminRealtime();
     $('#adminPanel').classList.remove('hidden');
     $('.login').classList.add('hidden');
-    try {
-      renderAdmin();
-    } catch (renderError) {
-      console.error('Falha ao abrir a Central:', renderError);
-      $('#adminPanel').classList.add('hidden');
-      $('.login').classList.remove('hidden');
-      throw new Error('A autenticação funcionou, mas a Central não abriu: ' + (renderError?.message || 'erro interno'));
-    }
+    renderAdmin();
   }catch(e){
-    console.error('Falha no login ou ao abrir a Central:',e);
+    console.error('Falha ao entrar:',e);
     const msg=String(e?.message||'').toLowerCase();
-    if(msg.includes('invalid login credentials')) alert('Senha incorreta para este usuário. Os usuários existem no Supabase; redefina apenas a senha se não lembrar.');
+    if(msg.includes('invalid login credentials')) alert('Usuário ou senha incorretos.');
     else if(msg.includes('email not confirmed')) alert('O usuário existe, mas o e-mail ainda não foi confirmado no Supabase.');
-    else if(msg.includes('rate limit')) alert('Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.');
-    else alert('Não foi possível entrar: '+(e?.message||'erro de autenticação'));
+    else if(msg.includes('rate limit')) alert('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+    else alert('Não foi possível entrar: '+(e?.message||'erro desconhecido'));
+    $('#adminPanel')?.classList.add('hidden');$('.login')?.classList.remove('hidden');
   }finally{btn.disabled=false;btn.textContent='Entrar';}
 }
 
@@ -825,17 +760,50 @@ function printReceipt(id,mode='both'){
  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pedido ${escapeHtml(o.id)}</title><style>@page{size:${printPaperWidth}mm auto;margin:2mm}body{font-family:monospace;width:${printPaperWidth-4}mm;margin:0;font-size:11px}.ticket{white-space:pre-wrap;page-break-after:always}.ticket:last-child{page-break-after:auto}</style></head><body>${parts.map(t=>`<div class="ticket">${escapeHtml(t)}</div>`).join('')}<script>onload=()=>setTimeout(()=>print(),250)<\/script></body></html>`);w.document.close();
 }
 async function markReadyAndPrint(id){await setOrderStatusAndNotify(id,'Pronto','ready');setTimeout(()=>printReceipt(id,'both'),250);}
-function zoneMatchStatus(){
-  const q=normalizeText(deliveryZoneSearch);
-  if(!q)return '';
-  const exact=deliveryZonesDraft.find(z=>normalizeText(z.name)===q);
-  if(exact)return `<div class="zoneExisting ok">✅ Este bairro já existe: <b>${escapeHtml(exact.name)}</b> — taxa ${BRL(exact.fee)}.</div>`;
-  return `<div class="zoneExisting helper">Nenhum bairro com esse nome foi cadastrado ainda.</div>`;
+function renderZoneRows(){
+ const q=normalizeText(deliveryZoneSearch);
+ const exact=q?deliveryZonesDraft.find(z=>normalizeText(z.name)===q):null;
+ const notice=exact?`<div class="zoneExisting ok">✅ Este bairro já existe: <b>${escapeHtml(exact.name)}</b> — taxa ${BRL(exact.fee)}.</div>`:'';
+ const rows=deliveryZonesDraft.map((z,i)=>({z,i})).filter(({z})=>!q||normalizeText(z.name).includes(q));
+ if(!rows.length)return notice+'<p class="emptyState">Nenhum bairro encontrado.</p>';
+ return notice+rows.map(({z,i})=>`<div class="zoneRow" data-zone-id="${z.id||''}"><input data-zone-name="${i}" value="${escapeHtml(z.name)}" placeholder="Nome do bairro"><input data-zone-fee="${i}" type="number" min="0" step="0.50" value="${Number(z.fee).toFixed(2)}"><label><input data-zone-active="${i}" type="checkbox" ${z.active?'checked':''}> Ativo</label><button class="dangerBtn" data-zone-remove="${i}">Excluir</button></div>`).join('');
 }
-function renderZoneRows(){const q=normalizeText(deliveryZoneSearch);const indexed=deliveryZonesDraft.map((z,i)=>({z,i}));const rows=indexed.filter(({z})=>!q||normalizeText(z.name).includes(q));if(!rows.length)return zoneMatchStatus()+'<p class="emptyState">Nenhum bairro encontrado.</p>';return zoneMatchStatus()+rows.map(({z,i})=>`<div class="zoneRow" data-zone-id="${z.id||''}"><input data-zone-name="${i}" value="${escapeHtml(z.name)}" placeholder="Nome do bairro"><input data-zone-fee="${i}" type="number" min="0" step="0.50" value="${Number(z.fee).toFixed(2)}"><label><input data-zone-active="${i}" type="checkbox" ${z.active?'checked':''}> Ativo</label><button class="dangerBtn" data-zone-remove="${i}">Excluir</button></div>`).join('');}
-function syncZoneDraftFromInputs(){$$('[data-zone-name]').forEach(input=>{const i=+input.dataset.zoneName;if(deliveryZonesDraft[i])deliveryZonesDraft[i].name=input.value});$$('[data-zone-fee]').forEach(input=>{const i=+input.dataset.zoneFee;if(deliveryZonesDraft[i])deliveryZonesDraft[i].fee=Number(input.value||0)});$$('[data-zone-active]').forEach(input=>{const i=+input.dataset.zoneActive;if(deliveryZonesDraft[i])deliveryZonesDraft[i].active=input.checked})}
-async function saveDeliveryZones(){syncZoneDraftFromInputs();const valid=deliveryZonesDraft.filter(z=>z.name.trim());const seen=new Set();for(const z of valid){const key=normalizeText(z.name);if(seen.has(key))throw new Error(`O bairro “${z.name}” já existe. Edite o cadastro existente em vez de criar outro.`);seen.add(key)}const {error}=await supabaseClient.rpc('admin_save_delivery_zones',{p_zones:valid});if(error)throw error;await loadAdminSupabaseState();renderAdmin();alert('Taxas salvas e atualizadas para os clientes.');}
-function zoneMapHtml(){const coords=`${STORE_LAT},${STORE_LNG}`;const address=encodeURIComponent(STORE_ADDRESS);return `<div class="mapBox storeMapMarked"><h4>📍 Localização da loja</h4><div class="mapPinLabel">📍 Doce Encanto</div><iframe title="Mapa da Doce Encanto" src="https://www.google.com/maps?q=${coords}&z=18&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><p><b>Doce Encanto — Rua Aletes, 78, Pindorama, Belo Horizonte/MG</b></p><p class="helper">Ponto de referência: portão marrom. O marcador indica a região da Rua Aletes, CEP 30865-180.</p><p><a href="https://www.google.com/maps/dir/?api=1&destination=${coords}&destination_place_id=&travelmode=driving" target="_blank" rel="noopener">Abrir rota até a loja</a></p></div>`;}
+function syncZoneDraftFromInputs(){$$('[data-zone-name]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneName].name=i.value.trim());$$('[data-zone-fee]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneFee].fee=Math.max(0,Number(i.value)||0));$$('[data-zone-active]').forEach(i=>deliveryZonesDraft[+i.dataset.zoneActive].active=i.checked);}
+async function saveDeliveryZones(){
+ syncZoneDraftFromInputs();
+ const valid=deliveryZonesDraft.filter(z=>z.name.trim());
+ const seen=new Set();
+ for(const z of valid){const key=normalizeText(z.name);if(seen.has(key))throw new Error(`O bairro “${z.name}” já existe. Edite o cadastro existente em vez de criar outro.`);seen.add(key)}
+ const {error}=await supabaseClient.rpc('admin_save_delivery_zones',{p_zones:valid});
+ if(error)throw error;
+ await loadAdminSupabaseState();renderAdmin();alert('Taxas salvas e atualizadas para os clientes.');
+}
+async function resetOfficialData(){const typed=prompt('Para apagar pedidos e movimentações de teste, digite ZERAR TESTES');if(typed!=='ZERAR TESTES')return alert('Limpeza cancelada.');if(!confirm('Confirma a limpeza? Produtos, estoque atual, usuários e taxas serão preservados.'))return;const {error}=await supabaseClient.rpc('admin_reset_test_data');if(error)throw error;cart=[];localStorage.removeItem(STORE+'orders');localStorage.removeItem(STORE+'stockMoves');await loadAdminSupabaseState();renderAdmin();alert('Pedidos, faturamento e movimentações foram zerados com segurança.');}
+function zoneMapHtml(){
+ const coords=`${STORE_LAT},${STORE_LNG}`;
+ return `<div class="mapBox storeMapMarked"><h4>📍 Localização da loja</h4><div class="mapPinLabel">📍 Doce Encanto</div><iframe title="Mapa da Doce Encanto" src="https://www.google.com/maps?q=${coords}&z=18&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><p><b>Doce Encanto — Rua Aletes, 78, Pindorama, Belo Horizonte/MG</b></p><p class="helper">Ponto de referência: portão marrom.</p><p><a href="https://www.google.com/maps/dir/?api=1&destination=${coords}&travelmode=driving" target="_blank" rel="noopener">Abrir rota até a loja</a></p></div>`;
+}
+function renderAdmin(){
+ const pending=orders.filter(o=>!orderIsDelivered(o)&&!orderIsCanceled(o)),delivered=orders.filter(orderIsDelivered),canceled=orders.filter(orderIsCanceled),production=pending.filter(orderIsProduction),deliveredRevenue=delivered.filter(o=>!o.isTest).reduce((a,o)=>a+o.total+(o.revenueAdjustment||0),0),low=products.filter(p=>!p.unavailable&&p.stock<=p.min).length;
+ $('#adminPanel').innerHTML=`<div class="adminHero"><div><p class="tag">Centro de Controle V58</p><h2>Área da Empresa</h2><p>Pedidos, estoque, financeiro mensal, impressão térmica e taxas de entrega online.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="toggleOrderAlarm" class="secondary">${newOrderAlarmEnabled?'🔔 Alarme ligado':'🔕 Ativar alarme'}</button><button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Entregues</button><button data-tabbtn="canceled">❌ Cancelados</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro mensal</button><button data-tabbtn="zones">🛵 Taxas</button><button data-tabbtn="settings">⚙️ Configurações</button></div>
+ <div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div>
+ <div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Produção</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o=>['recebido','pagamento confirmado'].includes(normalizeText(o.status))))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o=>['producao','produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o=>['pronto','saiu para entrega','aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div>
+ <div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Pedidos entregues</h3>${renderHistory(delivered)}</section></div>
+ <div class="tabPanel" data-tab="canceled"><section class="adminCard wide"><h3>❌ Pedidos cancelados</h3><p class="helper">Use “Voltar pedido” quando um cancelamento tiver sido feito por engano.</p>${renderCanceledOrders(canceled)}</section></div>
+ <div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><div class="stockTable">${products.filter(p=>!p.unavailable).map(p=>{const [label,cls,act]=stockStatus(p);return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="0" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`}).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div>
+ <div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Movimentações</h3>${renderStockMoves()}</section></div>
+ <div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Faturamento por mês</h3><p class="helper">Somente pedidos entregues e não marcados como teste entram no faturamento. Ajustes manuais ficam registrados.</p>${monthlyFinanceHtml()}<h4>Pedidos entregues e ajustes</h4><div class="historyTable">${orders.filter(o=>orderIsDelivered(o)&&!o.isTest).map(o=>`<div class="historyRow"><span>#${o.id}</span><span>${o.customerName}</span><span>${BRL(o.total+(o.revenueAdjustment||0))}</span><span>${currentAdmin==='teteu.trufa'?`<button class="secondary" data-revenue="${o.id}">Corrigir</button>`:''} <button class="ghost" data-test="${o.id}">${o.isTest?'Tornar real':'Marcar teste'}</button></span></div>`).join('')||'<p class="emptyState">Nenhum pedido real entregue.</p>'}</div></section></div>
+ <div class="tabPanel" data-tab="zones"><section class="adminCard wide"><h3>🛵 Taxas de entrega</h3><div class="zoneToolbar"><input id="zoneSearch" value="${escapeHtml(deliveryZoneSearch)}" placeholder="Pesquisar bairro"><button id="zoneAdd" class="secondary">+ Adicionar bairro</button></div><div id="zoneRows">${renderZoneRows()}</div><div class="zoneActions"><button id="zoneSave" class="primary">Salvar alterações</button><button id="zoneDiscard" class="ghost">Descartar alterações</button></div>${zoneMapHtml()}</section></div>
+ <div class="tabPanel" data-tab="settings"><section class="adminCard wide"><h3>⚙️ Configurações</h3><label>Largura da mini impressora <select id="paperWidth"><option value="58" ${printPaperWidth===58?'selected':''}>58 mm</option><option value="80" ${printPaperWidth===80?'selected':''}>80 mm</option></select></label><hr><h4>Início oficial</h4><p>Apaga pedidos, faturamento e movimentações de teste. Mantém produtos, estoque atual, usuários e taxas.</p><button id="resetOfficial" class="dangerBtn">Zerar testes e iniciar oficialmente</button></section></div>`;
+ $('#adminBack').onclick=()=>location.hash='home';$('#adminLogout').onclick=async()=>{await supabaseClient?.auth.signOut();currentAdmin=null;orders=[];stockMoves=[];$('#adminPanel').classList.add('hidden');$('.login').classList.remove('hidden')};
+ $$('[data-tabbtn]').forEach(btn=>btn.onclick=()=>{$$('[data-tabbtn]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$$('[data-tab]').forEach(p=>p.classList.toggle('active',p.dataset.tab===btn.dataset.tabbtn))});
+ $('#saveStock')?.addEventListener('click',async()=>{try{for(const inp of $$('[data-stock]')){const id=inp.dataset.stock,minInp=$(`[data-min="${id}"]`);const {error}=await supabaseClient.rpc('admin_set_inventory',{p_flavor_id:id,p_stock:Math.max(0,Number(inp.value)||0),p_min_stock:Math.max(0,Number(minInp?.value)||0)});if(error)throw error}await loadPublicInventory();await loadAdminSupabaseState();renderAdmin();renderProducts();renderPromo();alert('Estoque salvo.')}catch(e){alert(e.message)}});
+ $$('[data-status]').forEach(sel=>sel.onchange=()=>setOrderStatusAndNotify(sel.dataset.status,sel.value==='Aguardando pagamento'?'Recebido':sel.value));$$('[data-proof]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.proof,'Pagamento confirmado','paid'));$$('[data-next]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.next);if(o)setOrderStatusAndNotify(o.id,nextProductionStatus(o.status,o.fulfillment))});$$('[data-ready]').forEach(btn=>btn.onclick=()=>markReadyAndPrint(btn.dataset.ready));$$('[data-delivery]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivery,'Saiu para entrega','delivery'));$$('[data-delivered]').forEach(btn=>btn.onclick=()=>setOrderStatusAndNotify(btn.dataset.delivered,'Entregue','delivered'));$$('[data-chat]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.chat);if(o)openClientWhatsApp(o,'')});$$('[data-test]').forEach(btn=>btn.onclick=()=>toggleTestOrder(btn.dataset.test));$$('[data-revenue]').forEach(btn=>btn.onclick=()=>adjustRevenue(btn.dataset.revenue));$$('[data-cancel]').forEach(btn=>btn.onclick=()=>{const o=orders.find(x=>x.id===btn.dataset.cancel);if(confirm(`Tem certeza que deseja cancelar o pedido #${o?.id||''}?\n\nO estoque será devolvido e o cliente poderá receber a mensagem de cancelamento.`))setOrderStatusAndNotify(btn.dataset.cancel,'Cancelado','canceled')});$$('[data-restore]').forEach(btn=>btn.onclick=()=>restoreCanceledOrder(btn.dataset.restore));
+ // add print buttons to each order card
+ $$('.orderCard').forEach(card=>{const id=card.querySelector('[data-status]')?.dataset.status;if(id){const actions=card.querySelector('.orderActions');actions?.insertAdjacentHTML('beforeend',`<button class="ghost" data-print="${id}">🖨️ Reimprimir</button>`);}});$$('[data-print]').forEach(b=>b.onclick=()=>printReceipt(b.dataset.print,'both'));
+ $('#zoneSearch')?.addEventListener('input',e=>{syncZoneDraftFromInputs();deliveryZoneSearch=e.target.value;$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons()});$('#zoneAdd')?.addEventListener('click',()=>{syncZoneDraftFromInputs();deliveryZonesDraft.push({id:null,name:'',fee:5,active:true,latitude:null,longitude:null});$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons();$('#zoneRows input:last-of-type')?.focus()});$('#zoneSave')?.addEventListener('click',()=>saveDeliveryZones().catch(e=>alert(e.message)));$('#zoneDiscard')?.addEventListener('click',()=>{deliveryZonesDraft=deliveryZones.map(x=>({...x}));deliveryZoneSearch='';renderAdmin()});bindZoneButtons();
+ $('#toggleOrderAlarm')?.addEventListener('click',toggleNewOrderAlarm);$('#paperWidth')?.addEventListener('change',e=>{printPaperWidth=Number(e.target.value);localStorage.setItem(STORE+'paperWidth',String(printPaperWidth));alert('Tamanho salvo.')});$('#resetOfficial')?.addEventListener('click',()=>resetOfficialData().catch(e=>alert(e.message)));
+}
 function bindZoneButtons(){$$('[data-zone-remove]').forEach(b=>b.onclick=()=>{syncZoneDraftFromInputs();deliveryZonesDraft.splice(+b.dataset.zoneRemove,1);$('#zoneRows').innerHTML=renderZoneRows();bindZoneButtons()})}
 
 // WebAuthn local: usa biometria do dispositivo; a senha do Supabase continua sendo a autenticação principal.
