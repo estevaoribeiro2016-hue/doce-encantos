@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Doce Encanto | V54 OFICIAL Supabase Tempo Real</title>
+  <title>Doce Encanto | V56 Completa</title>
   <meta name="theme-color" content="#ff69a8" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="assets/style.css?v=54" />
+  <link rel="stylesheet" href="assets/style.css?v=56-completa" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#home"><img src="assets/trufita-oficial.png" alt="Trufita AI"><span>Doce Encanto</span></a>
-    <nav><a href="#promo">Promoção</a><a href="#cardapio">Cardápio</a><a href="#trufita-ai">Trufita AI</a><a href="#empresa">Empresa</a></nav>
+    <nav><a href="#promo">Promoção</a><a href="#cardapio">Cardápio</a><a href="#localizacao">Localização</a><a href="#trufita-ai">Trufita AI</a><a href="#minha-conta">Minha conta</a><a href="#empresa">Empresa</a></nav>
     <div class="actions"><button id="themeToggle" class="ghost">🌙</button><button id="cartOpen" class="cartBtn">🛒 <b id="cartCount">0</b></button></div>
   </header>
 
@@ -62,6 +62,15 @@
       <div id="products" class="grid"></div>
     </section>
 
+
+    <section id="localizacao" class="section locationSection">
+      <div class="sectionTitle"><p class="tag">Onde estamos</p><h2>📍 Localização da Doce Encanto</h2></div>
+      <div class="locationGrid">
+        <div class="panel"><h3>Retirada na loja</h3><p><b>Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180</b></p><p>Ponto de referência: procure o <b>portão marrom</b> no endereço.</p><a class="primary full" href="https://www.google.com/maps/search/?api=1&query=Rua%20Aletes%2078%20Pindorama%20Belo%20Horizonte%20MG" target="_blank" rel="noopener">Abrir rota no Google Maps</a></div>
+        <div class="mapBox publicMap"><iframe title="Mapa da loja Doce Encanto" src="https://www.google.com/maps?q=Rua%20Aletes%2078%20Pindorama%20Belo%20Horizonte%20MG&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+      </div>
+    </section>
+
     <section id="trufita-ai" class="section aiBox">
       <div class="sectionTitle"><p class="tag">Trufita AI</p><h2>Vendedora virtual</h2></div>
       <div class="chatWrap">
@@ -75,19 +84,29 @@
       <div class="sectionTitle"><p class="tag">Checkout</p><h2>Finalize seu pedido</h2></div>
       <div class="checkoutGrid checkoutGridV33">
         <div class="panel"><h3>Cliente</h3><input id="customerName" placeholder="Nome do cliente"><input id="customerPhone" placeholder="Telefone / WhatsApp" inputmode="tel"><small class="cepStatus">Esses dados vão completos para o WhatsApp da empresa.</small></div>
-        <div class="panel"><h3>Recebimento</h3><label><input type="radio" name="fulfillment" value="retirada" checked> Retirada na loja</label><label><input type="radio" name="fulfillment" value="entrega"> Entrega</label><p id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180.</p><div id="addressBox" class="hidden"><input id="cep" placeholder="CEP" inputmode="numeric" autocomplete="postal-code" maxlength="9"><small id="cepStatus" class="cepStatus">Digite o CEP para preencher a rua automaticamente.</small><input id="rua" placeholder="Rua"><input id="numero" placeholder="Número"><input id="bairro" placeholder="Bairro"><div class="addressSplit"><input id="cidade" placeholder="Cidade"><input id="estado" placeholder="UF" maxlength="2"></div><button id="calcDistance" class="secondary full" type="button">Aplicar frete por bairro</button><div class="deliveryRules"><b>🛵 Entrega realizada por Uber Moto</b><br><small>Pindorama, Filadélfia e Jardim Filadélfia: R$5 • Novo Glória: R$6 • Demais bairros: R$10 • 🎁 Frete grátis acima de R$30</small></div><div id="deliveryQuote" class="deliveryQuote hidden"></div></div></div>
+        <div class="panel"><h3>Recebimento</h3><label><input type="radio" name="fulfillment" value="retirada" checked> Retirada na loja</label><label><input type="radio" name="fulfillment" value="entrega"> Entrega</label><p id="storeAddress">Retirada: Rua Aletes, 78, Pindorama, Belo Horizonte/MG, 30865-180.</p><div id="addressBox" class="hidden"><div class="cepRow"><input id="cep" placeholder="CEP" inputmode="numeric" autocomplete="postal-code" maxlength="9"><button id="cepSearchBtn" class="secondary" type="button">Buscar CEP</button></div><small id="cepStatus" class="cepStatus">Digite o CEP para preencher a rua automaticamente.</small><input id="rua" placeholder="Rua"><input id="numero" placeholder="Número"><input id="bairro" placeholder="Bairro"><div class="addressSplit"><input id="cidade" placeholder="Cidade"><input id="estado" placeholder="UF" maxlength="2"></div><button id="calcDistance" class="secondary full" type="button">Aplicar frete por bairro</button><div class="deliveryRules"><b>🛵 Entrega realizada por Uber Moto</b><br><small>Pindorama, Filadélfia e Jardim Filadélfia: R$5 • Novo Glória: R$6 • Demais bairros: R$10 • 🎁 Frete grátis acima de R$30</small></div><div id="deliveryQuote" class="deliveryQuote hidden"></div></div></div>
         <div class="panel"><h3>Pagamento</h3><select id="payment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro na retirada</option><option value="cartao">Cartão na retirada</option></select><div id="pixBox" class="pixBox"><img class="qr-img" src="assets/pix-qrcode.png" alt="QR Code Pix da Doce Encanto"><p class="pixHint">Escaneie o QR Code ou copie a chave Pix abaixo.<br><b>Titular: Ingrid Emanuelle Damasceno</b></p><textarea id="pixCode" readonly>31992180872</textarea><button id="copyPix" class="secondary" type="button">Copiar chave Pix</button></div></div>
         <div class="panel"><h3>Resumo</h3><div id="checkoutItems"></div><div class="line"><span>Produtos</span><b id="subtotal">R$0,00</b></div><div class="line"><span>Frete</span><b id="frete">R$0,00</b></div><div id="freeShipSummary"></div><div class="line"><span>Entrega</span><b id="distanceLabel">—</b></div><div class="line total"><span>Total</span><b id="grandTotal">R$0,00</b></div><button id="finishOrder" class="primary full">Finalizar pedido</button></div>
       </div>
     </section>
 
-    <section id="empresa" class="section companySection"><div class="panel"><p class="tag">Acesso restrito</p><h2>Central da Empresa V54 OFICIAL</h2><p>Área segura com pedidos, estoque, produção, financeiro e sincronização online em tempo real para Teteu e Ingrid.</p><div class="login"><input id="user" placeholder="Usuário"><input id="pass" type="password" placeholder="Senha"><button id="loginBtn" class="primary">Entrar</button><button id="faceRegister" class="secondary" type="button">Cadastrar Face ID/Windows Hello</button><small>Primeiro acesso sempre exige usuário e senha. O Face ID/Windows Hello só pode ser cadastrado depois de informar um usuário autorizado.</small></div><div id="adminPanel" class="hidden"></div></div></section>
+
+    <section id="minha-conta" class="section customerArea">
+      <div class="sectionTitle"><p class="tag">Área do cliente</p><h2>Favoritos e meus pedidos</h2></div>
+      <div class="customerGrid">
+        <div class="panel"><h3>❤️ Meus favoritos</h3><p class="helper">Salve seus sabores preferidos tocando no coração do cardápio.</p><div id="favoriteProducts" class="favoriteGrid"></div></div>
+        <div class="panel"><h3>📚 Histórico de pedidos</h3><input id="customerHistoryPhone" placeholder="Digite seu telefone / WhatsApp" inputmode="tel"><button id="loadCustomerHistory" class="primary full" type="button">Buscar meus pedidos</button><small class="cepStatus">Use o mesmo telefone informado na compra.</small><div id="customerOrderHistory"></div></div>
+      </div>
+    </section>
+
+    <section id="empresa" class="section companySection"><div class="panel"><p class="tag">Acesso restrito</p><h2>Central da Empresa V56 OFICIAL</h2><p>Área segura com pedidos, estoque, produção, financeiro e sincronização online em tempo real para Teteu e Ingrid.</p><div class="login"><input id="user" placeholder="Usuário"><input id="pass" type="password" placeholder="Senha"><button id="loginBtn" class="primary">Entrar</button><button id="faceRegister" class="secondary" type="button">Cadastrar Face ID/Windows Hello</button><small>Primeiro acesso sempre exige usuário e senha. O Face ID/Windows Hello só pode ser cadastrado depois de informar um usuário autorizado.</small></div><div id="adminPanel" class="hidden"></div></div></section>
   </main>
 
   <aside id="cartDrawer" class="drawer"><div class="drawerHead"><h2>Meu pedido</h2><button id="cartClose" class="ghost">Voltar</button></div><div id="cartItems"></div><div class="drawerTotal"><span>Total</span><b id="cartTotal">R$0,00</b></div><button id="clearCart" class="ghost full">Limpar carrinho</button><a id="goCheckout" href="#checkout" class="primary full">Ir para pagamento</a></aside>
   <div id="overlay" class="overlay"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="assets/supabase-config.js?v=54"></script>
-  <script src="assets/app.js?v=54"></script>
+  <script src="assets/cep.js?v=56-completa"></script>
+  <script src="assets/supabase-config.js?v=56-completa"></script>
+  <script src="assets/app.js?v=56-completa"></script>
 </body>
 </html>

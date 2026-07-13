@@ -1,4 +1,9 @@
-const CACHE='doce-encanto-v54-1-safe';
-self.addEventListener('install',e=>{self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.hostname.includes('viacep.com.br')||u.hostname.includes('brasilapi.com.br')||u.hostname.includes('supabase.co'))return; e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});
+const CACHE='doce-encanto-v55-7-completa';
+self.addEventListener('install',event=>{self.skipWaiting();});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.map(key=>caches.delete(key)));await self.clients.claim();})());});
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET') return;
+  const url=new URL(event.request.url);
+  if(url.hostname.includes('viacep.com.br')||url.hostname.includes('brasilapi.com.br')||url.hostname.includes('supabase.co')) return;
+  event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>caches.match(event.request)));
+});
