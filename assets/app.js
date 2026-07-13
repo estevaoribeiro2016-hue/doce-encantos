@@ -583,6 +583,81 @@ function renderPendingOrders(pending) {
 function renderProductionQueue(queue) { if (!queue.length) return '<p class="emptyState">Nenhum pedido aguardando produção.</p>'; return queue.map(o => `<article class="productionTicket"><div class="ticketHead"><b>#${o.id}</b><span class="pill ${statusBadgeClass(o.status)}">${o.status}</span></div><h4>${o.customerName}</h4><p>${orderShortItems(o)}</p><div class="ticketFoot"><small>${o.fulfillment === 'entrega' ? '🛵 Entrega Uber Moto' : '🏪 Retirada na loja'}</small><button class="primary" data-next="${o.id}">${nextProductionStatus(o.status, o.fulfillment) === 'Entregue' ? 'Marcar entregue' : 'Avançar etapa'}</button></div></article>`).join(''); }
 function renderHistory(history) { if (!history.length) return '<p class="emptyState">Nenhum pedido entregue ou cancelado ainda.</p>'; return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Finalizado</b></div>${history.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.status}</small></span><span>${o.customerName}</span><b>${BRL(o.total)}</b><span>${o.deliveredAt || o.canceledAt || o.created}</span></div>`).join('')}</div>`; }
 function renderStockMoves() { if (!stockMoves.length) return '<p class="emptyState">Nenhuma movimentação de estoque ainda.</p>'; return `<div class="historyTable stockMoves"><div class="historyHead"><b>Data</b><b>Produto</b><b>Qtd</b><b>Motivo</b></div>${stockMoves.map(m => `<div class="historyRow"><span>${m.date}</span><span>${m.emoji} ${m.productName}<br><small>${m.type}${m.orderId ? ' • ' + m.orderId : ''}</small></span><b>${m.qty > 0 ? '+' : ''}${m.qty}</b><span>${m.reason}</span></div>`).join('')}</div>`; }
+
+async function toggleTestOrder(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return alert('Pedido não encontrado.');
+  const action = o.isTest
+    ? 'transformar este pedido em pedido real'
+    : 'marcar este pedido como teste e retirá-lo do faturamento';
+  if (!confirm(`Deseja ${action}?`)) return;
+  try {
+    const { error } = await supabaseClient.rpc('admin_mark_order_test_v55', {
+      p_order_id: id,
+      p_is_test: !o.isTest
+    });
+    if (error) throw error;
+    await loadAdminSupabaseState();
+    renderAdmin();
+  } catch (e) {
+    console.error(e);
+    alert(e.message || 'Não foi possível alterar o tipo do pedido.');
+  }
+}
+
+async function restoreCanceledOrder(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return alert('Pedido não encontrado.');
+  if (!confirm(`Voltar o pedido #${o.id} para os pedidos pendentes?\n\nO estoque será descontado novamente.`)) return;
+  try {
+    const { error } = await supabaseClient.rpc('admin_restore_canceled_order_v55', {
+      p_order_id: id
+    });
+    if (error) throw error;
+    await loadPublicInventory();
+    await loadAdminSupabaseState();
+    renderAdmin();
+    renderProducts();
+    renderPromo();
+    alert('Pedido restaurado para a área de pendentes.');
+  } catch (e) {
+    console.error(e);
+    alert(e.message || 'Não foi possível restaurar o pedido.');
+  }
+}
+
+function renderCanceledOrders(list) {
+  if (!list.length) return '<p class="emptyState">Nenhum pedido cancelado.</p>';
+  return `<div class="historyTable"><div class="historyHead"><b>Pedido</b><b>Cliente</b><b>Total</b><b>Ação</b></div>${list.map(o => `<div class="historyRow"><span>#${o.id}<br><small>${o.canceledAt || o.created}</small></span><span>${escapeHtml(o.customerName)}</span><b>${BRL(o.total)}</b><span><button class="primary" data-restore="${o.id}">↩️ Voltar pedido</button></span></div>`).join('')}</div>`;
+}
+
+async function adjustRevenue(id) {
+  if (currentAdmin !== 'teteu.trufa') return alert('Somente o usuário Teteu pode corrigir o faturamento.');
+  const o = orders.find(x => x.id === id);
+  if (!o) return alert('Pedido não encontrado.');
+  const current = o.total + (o.revenueAdjustment || 0);
+  const raw = prompt(`Valor original: ${BRL(o.total)}\nValor considerado atualmente: ${BRL(current)}\n\nDigite o valor correto:`, String(current).replace('.', ','));
+  if (raw === null) return;
+  const corrected = Number(String(raw).replace(/[^0-9,.-]/g, '').replace(',', '.'));
+  if (!Number.isFinite(corrected) || corrected < 0) return alert('Digite um valor válido.');
+  const reason = prompt('Informe o motivo da correção:', 'Correção de valor lançado incorretamente');
+  if (!reason) return alert('Informe o motivo da correção.');
+  try {
+    const { error } = await supabaseClient.rpc('admin_adjust_order_revenue_v55', {
+      p_order_id: id,
+      p_corrected_total: corrected,
+      p_reason: reason
+    });
+    if (error) throw error;
+    await loadAdminSupabaseState();
+    renderAdmin();
+    alert('Faturamento corrigido e alteração registrada.');
+  } catch (e) {
+    console.error(e);
+    alert(e.message || 'Não foi possível corrigir o faturamento.');
+  }
+}
+
 function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o) && !orderIsCanceled(o)); const delivered = orders.filter(orderIsDelivered); const history = orders.filter(o => orderIsDelivered(o) || orderIsCanceled(o)); const production = pending.filter(orderIsProduction); const revenue = orders.filter(o => !orderIsCanceled(o) && !o.isTest).reduce((a, o) => a + o.total, 0), deliveredRevenue = delivered.filter(o => !o.isTest).reduce((a, o) => a + o.total + (o.revenueAdjustment || 0), 0), low = products.filter(p => p.stock <= p.min).length; $('#adminPanel').innerHTML = `<div class="adminHero"><div><p class="tag">Centro de Controle</p><h2>Área da Empresa</h2><p>Pedidos entram em <b>pendentes</b>, descontam estoque ao finalizar e só vão ao histórico quando entregues ou cancelados.</p></div><div class="adminTopActions">${supabaseStatusHtml()}<button id="toggleOrderAlarm" class="secondary">${newOrderAlarmEnabled?'🔔 Alarme ligado':'🔕 Ativar alarme'}</button><button id="adminBack" class="secondary">Voltar ao site</button><button id="adminLogout" class="ghost">Sair</button></div></div><div class="dashCards"><div><small>Pendentes</small><b>${pending.length}</b></div><div><small>Produção</small><b>${production.length}</b></div><div><small>Estoque baixo</small><b>${low}</b></div><div><small>Faturamento entregue</small><b>${BRL(deliveredRevenue)}</b></div></div><div class="adminTabs"><button class="active" data-tabbtn="pending">📌 Pendentes</button><button data-tabbtn="production">🏭 Produção</button><button data-tabbtn="history">📚 Entregues</button><button data-tabbtn="canceled">❌ Cancelados</button><button data-tabbtn="stock">📦 Estoque</button><button data-tabbtn="moves">🔁 Movimentações</button><button data-tabbtn="finance">💰 Financeiro</button></div><div class="tabPanel active" data-tab="pending"><section class="adminCard wide"><h3>📌 Pedidos pendentes</h3><p class="helper">Todo pedido novo fica aqui e não sai enquanto não for marcado como entregue ou cancelado.</p><div class="ordersGrid">${renderPendingOrders(pending)}</div></section></div><div class="tabPanel" data-tab="production"><section class="adminCard wide"><h3>🏭 Painel de Produção Inteligente</h3><div class="productionBoard"><div><h4>🔴 Recebidos</h4>${renderProductionQueue(production.filter(o => normalizeText(o.status) === 'recebido'))}</div><div><h4>🟡 Em produção</h4>${renderProductionQueue(production.filter(o => ['producao', 'produção'].includes(normalizeText(o.status))))}</div><div><h4>🟢 Prontos / Saída</h4>${renderProductionQueue(production.filter(o => ['pronto', 'saiu para entrega', 'aguardando retirada'].includes(normalizeText(o.status))))}</div></div></section></div><div class="tabPanel" data-tab="history"><section class="adminCard wide"><h3>📚 Pedidos entregues</h3>${renderHistory(delivered)}</section></div>
  <div class="tabPanel" data-tab="canceled"><section class="adminCard wide"><h3>❌ Pedidos cancelados</h3><p class="helper">Use “Voltar pedido” quando um cancelamento tiver sido feito por engano.</p>${renderCanceledOrders(canceled)}</section></div><div class="tabPanel" data-tab="stock"><section class="adminCard wide"><h3>📦 Estoque inteligente</h3><p class="helper">Cadastre quantas trufas existem por sabor. Se zerar, o sabor fica indisponível no site.</p><div class="stockTable">${products.map(p => { const [label, cls, act] = stockStatus(p); return `<div class="stockRow"><div><b>${p.emoji} ${p.name}</b><small>${act}</small></div><input data-stock="${p.id}" type="number" min="0" value="${p.stock}"><input data-min="${p.id}" type="number" min="1" value="${p.min}"><span class="pill ${cls}">${label}</span></div>`; }).join('')}</div><button id="saveStock" class="primary full">Salvar estoque</button></section></div><div class="tabPanel" data-tab="moves"><section class="adminCard wide"><h3>🔁 Histórico de movimentação do estoque</h3>${renderStockMoves()}</section></div><div class="tabPanel" data-tab="finance"><section class="adminCard wide"><h3>💰 Financeiro simples</h3><div class="line"><span>Faturamento total sem cancelados</span><b>${BRL(revenue)}</b></div><div class="line"><span>Faturamento entregue</span><b>${BRL(deliveredRevenue)}</b></div><div class="line"><span>Ticket médio</span><b>${BRL(orders.length ? revenue / Math.max(1, orders.filter(o => !orderIsCanceled(o)).length) : 0)}</b></div></section></div>`;
   $('#adminBack').onclick=()=>location.hash='home'; $('#adminLogout').onclick=async()=>{await supabaseClient?.auth.signOut();currentAdmin=null;orders=[];stockMoves=[];$('#adminPanel').classList.add('hidden');$('.login').classList.remove('hidden');};
@@ -594,6 +669,9 @@ function renderAdmin() { const pending = orders.filter(o => !orderIsDelivered(o)
   $$('[data-delivery]').forEach(btn => btn.onclick = () => setOrderStatusAndNotify(btn.dataset.delivery, 'Saiu para entrega', 'delivery'));
   $$('[data-delivered]').forEach(btn => btn.onclick = () => setOrderStatusAndNotify(btn.dataset.delivered, 'Entregue', 'delivered'));
   $$('[data-chat]').forEach(btn => btn.onclick = () => { const o = orders.find(x => x.id === btn.dataset.chat); if (o) openClientWhatsApp(o, ''); });
+  $$('[data-test]').forEach(btn => btn.onclick = () => toggleTestOrder(btn.dataset.test));
+  $$('[data-revenue]').forEach(btn => btn.onclick = () => adjustRevenue(btn.dataset.revenue));
+  $$('[data-restore]').forEach(btn => btn.onclick = () => restoreCanceledOrder(btn.dataset.restore));
   $$('[data-cancel]').forEach(btn => btn.onclick = () => { if (confirm('Cancelar este pedido e devolver o estoque?')) setOrderStatusAndNotify(btn.dataset.cancel, 'Cancelado', 'canceled'); });
 }
 
